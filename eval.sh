@@ -1,5 +1,5 @@
 export nnUNet_preprocessed="/nfs/home/mwei/nnUNet_3d_data/nnUNet_preprocessed"
-export nnUNet_results="/nfs/home/mwei/nnUNet_3d_data/nnUNet_results_ocls_newmodel_dpreduce"
+export nnUNet_results="/nfs/home/mwei/nnUNet_results/nnUNet_results_2opt"
 # infer for raw data prediction
 # nnUNetv2_evaluate_folder \
 # /nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal \
@@ -15,6 +15,6 @@ export nnUNet_results="/nfs/home/mwei/nnUNet_3d_data/nnUNet_results_ocls_newmode
 
 #evaluate classification
 python nnunetv2/evaluation/evaluate_classification.py \
-  /nfs/home/mwei/nnUNet_3d_data/nnUNet_results_ocls_newmodel_dpreduce/segreVal_slow \
+  /nfs/home/mwei/nnUNet_results/nnUNet_results_2opt/segreVal_fast  \
   /nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/classification.json \
   --class-names "subtype0" "subtype1" "subtype2"

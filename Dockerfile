@@ -30,7 +30,7 @@ RUN pip install torch==2.3.0+cu118 torchvision==0.18.0+cu118 torchaudio==2.3.0+c
 RUN addgroup --gid $GROUP_ID $USER && \
     adduser --disabled-password --gecos "" --uid $USER_ID --gid $GROUP_ID $USER
 
-WORKDIR /nfs/home/$USER/nnUNet_wcls
+WORKDIR /nfs/home/$USER/nnUNet_3DCT
 
 COPY . .
 

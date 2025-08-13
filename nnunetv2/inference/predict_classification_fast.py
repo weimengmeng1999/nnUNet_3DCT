@@ -205,11 +205,17 @@ class nnUNetPredictorWithClassification(nnUNetPredictor):
         
         # Create classification head with encoder features input (320 channels)
         encoder_channels = 320
+        # self.cls_head = nn.Sequential(
+        #     nn.AdaptiveMaxPool3d(1),
+        #     nn.Flatten(),
+        #     nn.Linear(encoder_channels, self.mt_num_classes)
+        # )
         self.cls_head = nn.Sequential(
-            nn.AdaptiveMaxPool3d(1),
+            nn.AdaptiveAvgPool3d(1),  
             nn.Flatten(),
+            nn.LayerNorm(encoder_channels),
             nn.Linear(encoder_channels, self.mt_num_classes)
-        )
+        ).to(self.device) # simple LNorm experiment
 
         self.cls_head.load_state_dict(cls_state, strict=True)
                 

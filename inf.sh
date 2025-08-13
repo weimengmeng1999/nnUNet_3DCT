@@ -1,5 +1,5 @@
 export nnUNet_preprocessed="/nfs/home/mwei/nnUNet_3d_data/nnUNet_preprocessed"
-export nnUNet_results="/nfs/home/mwei/nnUNet_3d_data/nnUNet_results_ocls_newmodel_dpreduce"
+export nnUNet_results="/nfs/home/mwei/nnUNet_results/nnUNet_results_2opt"
 # infer for raw data prediction for segmentation only
 # nnUNetv2_predict \
 #   -i /nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/imagesVal \
@@ -64,13 +64,13 @@ export nnUNet_results="/nfs/home/mwei/nnUNet_3d_data/nnUNet_results_ocls_newmode
 #   --save_probabilities
 
 
-python nnunetv2/inference/predict_classification_fast_new.py \
+python nnunetv2/inference/predict_classification_fast.py \
   -i /nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/imagesVal \
-  -o /nfs/home/mwei/nnUNet_3d_data/nnUNet_results_ocls_newmodel_dpreduce/segreVal_fast \
-  -co /nfs/home/mwei/nnUNet_3d_data/nnUNet_results_ocls_newmodel_dpreduce/segreVal_fast \
+  -o /nfs/home/mwei/nnUNet_results/nnUNet_results_2opt/segreVal_fast \
+  -co /nfs/home/mwei/nnUNet_results/nnUNet_results_2opt/segreVal_fast \
   -d Dataset001_3DCT \
   -c 3d_fullres \
-  -tr nnUNetTrainer_CLSHead_Frozen \
+  -tr nnUNetTrainer_CLSHead\
   -p nnUNetPlans \
   -f 0 \
   -chk checkpoint_best.pth \

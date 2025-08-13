@@ -16,8 +16,9 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 from nnunetv2.training.lr_scheduler.polylr import PolyLRScheduler
 
 
-class nnUNetTrainer_CLSHead(nnUNetTrainer):
+class nnUNetTrainer_CLSHeadSepOpt(nnUNetTrainer):
     """
+    2 separate optimizers for segmentation and classification
     Multi-task trainer that adds a case-level classification head using encoder features.
     The classification head consumes the encoder's bottleneck features via
     AdaptiveAvgPool3d -> Flatten -> Dropout -> Linear.
@@ -38,10 +39,7 @@ class nnUNetTrainer_CLSHead(nnUNetTrainer):
         self.cls_head: nn.Module = None
         self.cls_loss_fn: nn.Module = None
 
-    def _build_cls_head_if_needed(self):
-        if self.cls_head is not None:
-            return
-        
+    def build_cls_head(self):
         # this is hardcoded for now
         # Input channels for the head come from the encoder (320 channels based on our plan.json for 3d fullers)
         # change this based on the last feature size of the encoder in plans.json
@@ -71,39 +69,48 @@ class nnUNetTrainer_CLSHead(nnUNetTrainer):
         #     nn.Linear(256, self.mt_num_classes)
         # ).to(self.device) # for NBND experiments
 
-        self.cls_head = nn.Sequential(
+        cls_head = nn.Sequential(
             nn.AdaptiveAvgPool3d(1),  
             nn.Flatten(),
             nn.LayerNorm(encoder_channels),
             nn.Linear(encoder_channels, self.mt_num_classes)
         ).to(self.device) # simple LNorm experiment
 
+        return cls_head
 
+    def configure_optimizers_cls(self):
+        # Ensure the classification head exists before creating its optimizer
+        # self._build_cls_head_if_needed()
+        # Optimizer and Scheduler for the main nnU-Net segmentation network
+        # This uses SGD with PolyLRScheduler, as is standard for nnU-Net
+        optimizer_seg = torch.optim.SGD(
+            self.network.parameters(),
+            lr=self.initial_lr,
+            weight_decay=self.weight_decay,
+            momentum=0.99,
+            nesterov=True
+        )
+        lr_scheduler_seg = PolyLRScheduler(optimizer_seg, self.initial_lr, self.num_epochs)
+
+        # Optimizer and Scheduler for the classification head ---
+        optimizer_cls = torch.optim.Adam(
+            self.cls_head.parameters(),
+            lr=self.initial_lr * 5 # Use a higher learning rate for the classification head
+        )
+        lr_scheduler_cls = CosineAnnealingLR(optimizer_cls, T_max=self.num_epochs)
+
+        # Return both optimizers and schedulers as lists. This is a common pattern
+        # for frameworks that support multi-optimizer setups.
+        return optimizer_seg, optimizer_cls, lr_scheduler_seg, lr_scheduler_cls
+    
+    def initialize(self):
+        super().initialize()
+        self.cls_head = self.build_cls_head()
         weights_fn = torch.tensor([1.3548, 0.7925, 1.0], dtype=torch.float32).to(self.device)
         self.cls_loss_fn = nn.CrossEntropyLoss(weight=weights_fn)
-        # self.cls_loss_fn = nn.CrossEntropyLoss()
 
-    def configure_optimizers(self):
-        # Called in initialize() AND we call it again after attaching cls_head in on_train_start.
-        # Ensure head exists before creating optimizer so its params are included.
-        self._build_cls_head_if_needed()
-        # optimizer = torch.optim.SGD(
-        #     list(self.network.parameters()) + list(self.cls_head.parameters()),
-        #     self.initial_lr, weight_decay=self.weight_decay, momentum=0.99, nesterov=True
-        # )
-        optimizer = torch.optim.SGD([
-                                    {'params': self.network.parameters()},
-                                    {'params': self.cls_head.parameters(), 'lr': self.initial_lr * 5}
-                                ], lr=self.initial_lr, weight_decay=self.weight_decay, momentum=0.99, nesterov=True)
-        from nnunetv2.training.lr_scheduler.polylr import PolyLRScheduler
-        lr_scheduler = PolyLRScheduler(optimizer, self.initial_lr, self.num_epochs)
-        return optimizer, lr_scheduler
+        self.optimizer_seg, self.optimizer_cls, self.lr_scheduler_seg, self.lr_scheduler_cls = self.configure_optimizers_cls()
 
-    def on_train_start(self):
-        super().on_train_start()
-        # Rebuild optimizer to include classification head
-        self._build_cls_head_if_needed()
-        self.optimizer, self.lr_scheduler = self.configure_optimizers()
 
     def _compute_segmentation_loss_only(self, output, target):
         return self.loss(output, target)
@@ -132,7 +139,9 @@ class nnUNetTrainer_CLSHead(nnUNetTrainer):
                 # convert numpy/array-like to tensor
                 cls_target = torch.as_tensor(cls_target, device=self.device)
 
-        self.optimizer.zero_grad(set_to_none=True)
+        #Zero the gradients for BOTH optimizers
+        self.optimizer_seg.zero_grad(set_to_none=True)
+        self.optimizer_cls.zero_grad(set_to_none=True)
 
         with autocast(self.device.type, enabled=True) if self.device.type == 'cuda' else dummy_context():
             # Forward pass - now returns seg_outputs AND encoder_features
@@ -142,34 +151,42 @@ class nnUNetTrainer_CLSHead(nnUNetTrainer):
             seg_loss = self._compute_segmentation_loss_only(seg_outputs, target)
 
             cls_loss = torch.tensor(0.0, device=self.device)
-            if cls_target is not None and encoder_features is not None:
-                # print(f"Encoder features shape: {encoder_features.shape}")
-                
-                cls_logits = self._compute_classification_logits(encoder_features)
-                
-                cls_target = cls_target.long()
-                cls_loss = self.cls_loss_fn(cls_logits, cls_target)
+            cls_logits = self._compute_classification_logits(encoder_features)
+            
+            cls_target = cls_target.long()
+            cls_loss = self.cls_loss_fn(cls_logits, cls_target)
 
+            # Calculate the total loss as a combined value
             total_loss = seg_loss + self.mt_loss_weight * cls_loss
 
         if self.grad_scaler is not None:
+            # Perform backward pass on the total loss
             self.grad_scaler.scale(total_loss).backward()
-            self.grad_scaler.unscale_(self.optimizer)
+            
+            # Unscale gradients for BOTH optimizers
+            self.grad_scaler.unscale_(self.optimizer_seg)
+            self.grad_scaler.unscale_(self.optimizer_cls)
+            
+            # Grad norm clipping is applied to all parameters
             torch.nn.utils.clip_grad_norm_(list(self.network.parameters()) + list(self.cls_head.parameters()), 12)
-            self.grad_scaler.step(self.optimizer)
+            
+            # Step BOTH optimizers
+            self.grad_scaler.step(self.optimizer_seg)
+            self.grad_scaler.step(self.optimizer_cls)
             self.grad_scaler.update()
         else:
             total_loss.backward()
+            
+            # Grad norm clipping is applied to all parameters
             torch.nn.utils.clip_grad_norm_(list(self.network.parameters()) + list(self.cls_head.parameters()), 12)
-            self.optimizer.step()
+            
+            self.optimizer_seg.step()
+            self.optimizer_cls.step()
 
         # Report total loss; optionally also return cls/seg components for debugging
         out = {'loss': total_loss.detach().cpu().numpy()}
         out['seg_loss'] = seg_loss.detach().cpu().numpy()
         out['cls_loss'] = cls_loss.detach().cpu().numpy()
-        # print(f"CLS Loss: {cls_loss:.4f}")
-        # if cls_target is not None:
-        #     out['cls_loss'] = cls_loss.detach().cpu().numpy()
         return out
 
     def validation_step(self, batch: dict) -> dict:
@@ -252,10 +269,8 @@ class nnUNetTrainer_CLSHead(nnUNetTrainer):
             cls_logits = self._compute_classification_logits(encoder_features)
             # For single label multiclass, use argmax
             cls_pred = cls_logits.argmax(dim=1)
-            # Convert to numpy for sklearn
             cls_pred_np = cls_pred.detach().cpu().numpy()
             cls_target_np = cls_target.detach().cpu().numpy()
-            # Calculate macro F1 score
             f1_macro = f1_score(cls_target_np, cls_pred_np, average='macro', zero_division=0)
             
             print(f"F1 Macro: {f1_macro:.4f}")
@@ -270,7 +285,7 @@ class nnUNetTrainer_CLSHead(nnUNetTrainer):
                 
                 checkpoint = {
                     'network_weights': (network_state if not self.is_ddp else self.network.module.original_network.state_dict()),
-                    'optimizer_state': self.optimizer.state_dict(),
+                    'optimizer_seg_state': self.optimizer_seg.state_dict(),
                     'grad_scaler_state': self.grad_scaler.state_dict() if self.grad_scaler is not None else None,
                     'logging': self.logger.get_checkpoint(),
                     '_best_ema': self._best_ema,
@@ -279,6 +294,7 @@ class nnUNetTrainer_CLSHead(nnUNetTrainer):
                     'trainer_name': self.__class__.__name__,
                     'inference_allowed_mirroring_axes': self.inference_allowed_mirroring_axes,
                     'cls_head_state': self.cls_head.state_dict() if self.cls_head is not None else None,
+                    'optimizer_cls_state': self.optimizer_cls.state_dict(),
                     'mt_num_classes': self.mt_num_classes,
                     'mt_loss_weight': self.mt_loss_weight,
                     'mt_multilabel': self.mt_multilabel,
@@ -314,14 +330,16 @@ class nnUNetTrainer_CLSHead(nnUNetTrainer):
         self.network.original_network.load_state_dict(new_state_dict)
         
         # Build and load classification head
-        self._build_cls_head_if_needed()
         if checkpoint.get('cls_head_state') is not None:
             self.cls_head.load_state_dict(checkpoint['cls_head_state'])
 
         # Rebuild optimizer to include cls_head parameters
-        self.optimizer, self.lr_scheduler = self.configure_optimizers()
-        self.optimizer.load_state_dict(checkpoint['optimizer_state'])
-        
+        self.optimizer_seg, self.optimizer_cls, self.lr_scheduler_seg, self.lr_scheduler_cls = self.configure_optimizers_cls()
+        self.optimizer_seg.load_state_dict(checkpoint['optimizer_seg_state'])
+
+        if checkpoint.get('optimizer_cls_state') is not None:
+            self.optimizer_cls.load_state_dict(checkpoint['optimizer_cls_state'])
+
         if self.grad_scaler is not None:
             if checkpoint['grad_scaler_state'] is not None:
                 self.grad_scaler.load_state_dict(checkpoint['grad_scaler_state'])

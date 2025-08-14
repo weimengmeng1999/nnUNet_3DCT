@@ -1,5 +1,5 @@
 export nnUNet_preprocessed="/nfs/home/mwei/nnUNet_3d_data/nnUNet_preprocessed"
-export nnUNet_results="/nfs/home/mwei/nnUNet_results/nnUNet_results_2opt"
+export nnUNet_results="/nfs/home/mwei/nnUNet_results/nnUNet_results_bus"
 # infer for raw data prediction for segmentation only
 # nnUNetv2_predict \
 #   -i /nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/imagesVal \
@@ -66,8 +66,8 @@ export nnUNet_results="/nfs/home/mwei/nnUNet_results/nnUNet_results_2opt"
 
 python nnunetv2/inference/predict_classification_fast.py \
   -i /nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/imagesVal \
-  -o /nfs/home/mwei/nnUNet_results/nnUNet_results_2opt/segreVal_fast \
-  -co /nfs/home/mwei/nnUNet_results/nnUNet_results_2opt/segreVal_fast \
+  -o /nfs/home/mwei/nnUNet_results/nnUNet_results_bus/segreTr_fast \
+  -co /nfs/home/mwei/nnUNet_results/nnUNet_results_bus/segreTr_fast \
   -d Dataset001_3DCT \
   -c 3d_fullres \
   -tr nnUNetTrainer_CLSHead\

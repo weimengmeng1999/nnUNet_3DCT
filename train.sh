@@ -10,7 +10,7 @@
 echo "Starting nnU-Net v2 training..."
 export nnUNet_raw="/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw"
 export nnUNet_preprocessed="/nfs/home/mwei/nnUNet_3d_data/nnUNet_preprocessed"
-export nnUNet_results="/nfs/home/mwei/nnUNet_results/nnUNet_results_2opt"
+export nnUNet_results="/nfs/home/mwei/nnUNet_results/nnUNet_results_bus"
 export NNUNETV2_MT_NUM_CLS=3 #your number of classes
 export NNUNETV2_MT_LOSS_WEIGHT=1 #lambda for cls loss 
 nnUNetv2_train Dataset001_3DCT 3d_fullres 0 -tr nnUNetTrainer_CLSHead -p nnUNetPlans --npz

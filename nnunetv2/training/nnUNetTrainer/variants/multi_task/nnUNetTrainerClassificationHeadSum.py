@@ -15,128 +15,115 @@ import torch.nn.functional as F
 
 from torch.nn import init
 
-class CA_Module_3D(nn.Module):
-    """3D Channel Attention (Modified from your 2D version)"""
-    def __init__(self, in_channel):
-        super().__init__()
-        self.avgpool = nn.AdaptiveAvgPool3d(1)  # Changed to 3D
-        self.maxpool = nn.AdaptiveMaxPool3d(1)   # Changed to 3D
+# class CA_Module_3D(nn.Module):
+#     """3D Channel Attention (Modified from your 2D version)"""
+#     def __init__(self, in_channel):
+#         super().__init__()
+#         self.avgpool = nn.AdaptiveAvgPool3d(1)  # Changed to 3D
+#         self.maxpool = nn.AdaptiveMaxPool3d(1)   # Changed to 3D
         
-        self.linear = nn.Sequential(
-            nn.Linear(2 * in_channel, max(4, in_channel // 16)),  # Avoid too small dims
-            nn.ReLU(),
-            nn.Linear(max(4, in_channel // 16), in_channel),
-            nn.Sigmoid()
-        )
+#         self.linear = nn.Sequential(
+#             nn.Linear(2 * in_channel, max(4, in_channel // 16)),  # Avoid too small dims
+#             nn.ReLU(),
+#             nn.Linear(max(4, in_channel // 16), in_channel),
+#             nn.Sigmoid()
+#         )
 
-    def forward(self, x):
-        b, c, _, _, _ = x.size()  # 3D shape
-        p1 = self.avgpool(x).flatten(1)
-        p2 = self.maxpool(x).flatten(1)
-        p = torch.cat([p1, p2], dim=1)
-        po = self.linear(p).view(b, c, 1, 1, 1)  # 3D reshape
-        return x * po  # Remove ReLU to prevent dead neurons
+#     def forward(self, x):
+#         b, c, _, _, _ = x.size()  # 3D shape
+#         p1 = self.avgpool(x).flatten(1)
+#         p2 = self.maxpool(x).flatten(1)
+#         p = torch.cat([p1, p2], dim=1)
+#         po = self.linear(p).view(b, c, 1, 1, 1)  # 3D reshape
+#         return x * po  # Remove ReLU to prevent dead neurons
 
+# class Classifier3D(nn.Module):
+#     """3D Classifier for multi-scale nnUNet features"""
+#     def __init__(self, num_classes, encoder_channels=[320, 320, 256, 128, 64, 32]):
+#         super().__init__()
+#         self.avgpool = nn.AdaptiveAvgPool3d(1)
+#         self.fc_layers = nn.ModuleList([
+#             nn.Linear(ch, num_classes) for ch in encoder_channels
+#         ])
 
+#     def forward(self, *features):
+#         outputs = []
+#         for feat, fc in zip(features, self.fc_layers):
+#             pooled = self.avgpool(feat).flatten(1)
+#             outputs.append(fc(pooled))
+#         return sum(outputs)  # sum logits from all scales
 class Classifier3D(nn.Module):
-    """3D Classifier for nnUNet Features"""
-    def __init__(self, num_classes, encoder_channels=[256, 320, 320]):
+    """3D Classifier for multi-scale nnUNet features"""
+    def __init__(self, num_classes, encoder_channels=[320, 320, 256, 128, 64, 32]):
         super().__init__()
-        # Channel attention for multi-scale features
-        self.ca1 = CA_Module_3D(encoder_channels[0])
-        self.ca2 = CA_Module_3D(encoder_channels[1])
-        self.ca3 = CA_Module_3D(encoder_channels[2])
-        
-        # 3D Upsampling
-        self.up = nn.Upsample(scale_factor=2, mode='trilinear', align_corners=False)
-        
-        # Classifier head
-        self.avgpool = nn.AdaptiveAvgPool3d(1)
-        total_channels = sum(encoder_channels)
-        self.fc = nn.Sequential(
-            nn.Linear(total_channels, 128),  # Reduced capacity for 3D
-            nn.ReLU(),
-            nn.Linear(128, num_classes)
-        )
+        self.pool = nn.AdaptiveMaxPool3d(1)  # global max pooling
+        self.fc_layers = nn.ModuleList([
+            nn.Linear(ch, num_classes) for ch in encoder_channels
+        ])
+        self.final_fc = nn.Linear(num_classes * len(encoder_channels), num_classes)
 
-    def forward(self, x1, x2, x3):
-        # Process multi-scale features
-        c1 = self.ca1(x1)  # [B, 256, D1, H1, W1]
-        c2 = self.up(self.ca2(x2))  # [B, 320, D1, H1, W1]
-        c3 = self.ca3(x3)  # [B, 320, D3, H3, W3]
-        
-        # Ensure spatial dims match via adaptive pooling
-        target_size = c1.shape[2:]
-        c2 = F.interpolate(c2, size=target_size, mode='trilinear')
-        c3 = F.interpolate(c3, size=target_size, mode='trilinear')
-        
-        # Concatenate and classify
-        x = torch.cat([c1, c2, c3], dim=1)
-        x = self.avgpool(x).flatten(1)
-        return self.fc(x)
+    def forward(self, *features):
+        logits_list = []
+        for feat, fc in zip(features, self.fc_layers):
+            pooled = self.pool(feat).flatten(1)
+            logits_list.append(fc(pooled))  # per-scale logits
 
-class nnUNetTrainer_CLSHeadCA(nnUNetTrainer):
+        concat_logits = torch.cat(logits_list, dim=1)
+        return self.final_fc(concat_logits)
+
+
+class nnUNetTrainer_CLSHeadSum(nnUNetTrainer):
     def __init__(self, plans: dict, configuration: str, fold: int, dataset_json: dict,
                  device: torch.device = torch.device('cuda')):
         super().__init__(plans, configuration, fold, dataset_json, device)
-        self.mt_num_classes = int(os.environ.get('NNUNETV2_MT_NUM_CLS', '2'))
+        self.mt_num_classes = int(os.environ.get('NNUNETV2_MT_NUM_CLS', '3'))
         self.mt_loss_weight = float(os.environ.get('NNUNETV2_MT_LOSS_WEIGHT', '0.3'))
-        self.mt_multilabel = os.environ.get('NNUNETV2_MT_MULTILABEL', '0').lower() in ('1', 'true', 't', 'yes')
+        self.pre_checkpoint_path = os.environ.get('NNUNETV2_PRE_CHECKPOINT_PATH', '/home/mengwei/Downloads/nnUNet_code/pretrain/checkpoint_best.pth')
         
         # Calculate proper class weights based on your training data
         self.cls_head = None
         self.cls_loss_fn = None
         # self.gradient_accumulation_steps = 4  # Effective batch_size=8
 
-    def _build_cls_head_if_needed(self):
-        if self.cls_head is not None:
-            return
-            
-        # encoder_channels = 320  # From plans.json
-        
-        # # Improved classification head
-        # # self.cls_head = nn.Sequential(
-        # #     nn.AdaptiveAvgPool3d(1),
-        # #     nn.Flatten(),
-        # #     nn.InstanceNorm1d(encoder_channels),  # Stable normalization for small batches
-        # #     nn.Linear(encoder_channels, self.mt_num_classes)  # Direct prediction
-        # # ).to(self.device)
-        # self.cls_head = nn.Sequential(
-        #     nn.AdaptiveAvgPool3d(1),  
-        #     nn.Flatten(),
-        #     nn.LayerNorm(encoder_channels),
-        #     nn.Linear(encoder_channels, self.mt_num_classes)
-        # ).to(self.device) # simple LNorm experiment/ 1opt1lr experiment / simple ver2
-        self.cls_head = Classifier3D(self.mt_num_classes).to(self.device)
+    def build_cls_head(self):
+        cls_head = Classifier3D(self.mt_num_classes).to(self.device)
 
-        # Proper initialization
-        # for m in self.cls_head.modules():
-        #     if isinstance(m, nn.Linear):
-        #         nn.init.kaiming_normal_(m.weight, mode='fan_out')
-        #         nn.init.constant_(m.bias, 0)
-
-        weights_fn = torch.tensor([1.7, 1.0, 1.26], dtype=torch.float32).to(self.device)  # Example weights
-        
-        # Improved loss function with label smoothing
-        self.cls_loss_fn = nn.CrossEntropyLoss(
-            weight=weights_fn,
-            label_smoothing=0.1  # Helps with small batches
-        )
-
-    def configure_optimizers(self):
-        self._build_cls_head_if_needed()
-        # optimizer = torch.optim.SGD([
-        #     {'params': self.network.parameters(), 'lr': self.initial_lr},
-        #     {'params': self.cls_head.parameters(), 'lr': self.initial_lr * 5}  # Higher LR for head
-        # ], lr=self.initial_lr, weight_decay=self.weight_decay, momentum=0.99, nesterov=True)
-
-        optimizer = torch.optim.SGD(
-            list(self.network.parameters()) + list(self.cls_head.parameters()),
-            self.initial_lr, weight_decay=self.weight_decay, momentum=0.99, nesterov=True
-        )
+        return cls_head
+    
+    def configure_optimizers_cls(self):
+        optimizer = torch.optim.SGD([
+            {'params': self.network.parameters(), 'lr': self.initial_lr},
+            {'params': self.cls_head.parameters(), 'lr': self.initial_lr * 10}  # Higher LR for head
+        ], lr=self.initial_lr, weight_decay=self.weight_decay, momentum=0.99, nesterov=True)
         
         lr_scheduler = PolyLRScheduler(optimizer, self.initial_lr, self.num_epochs)
         return optimizer, lr_scheduler
+    
+    def initialize(self):
+        super().initialize()
+        self.cls_head = self.build_cls_head()
+        weights_fn = torch.tensor([1.3548, 0.7925, 1.0], dtype=torch.float32).to(self.device)
+        self.cls_loss_fn = nn.CrossEntropyLoss(weight=weights_fn)
+
+        self.initial_lr = 1e-3
+
+        self.optimizer, self.lr_scheduler = self.configure_optimizers_cls()
+        #add for using checkpoint for stage 1 trained only for segmentation
+        # checkpoint = torch.load(self.pre_checkpoint_path, map_location=self.device, weights_only=False)
+
+        # new_state_dict = {}
+        # for k, value in checkpoint['network_weights'].items():
+        #     key = k
+        #     if key not in self.network.state_dict().keys() and key.startswith('module.'):
+        #         key = key[7:]
+        #     new_state_dict[key] = value
+            
+        # # # Load the weights
+        # self.network._orig_mod.load_state_dict(new_state_dict)
+
+        # # Mark as loaded to avoid reloading every step
+        # self._pretrained_loaded = True
+        # print("Pretrained weights loaded successfully!")
     
     def _compute_segmentation_loss_only(self, output, target):
         return self.loss(output, target)
@@ -165,19 +152,50 @@ class nnUNetTrainer_CLSHeadCA(nnUNetTrainer):
         # Forward pass
         with autocast(self.device.type, enabled=True):
             # Single forward pass through encoder
-            encoder_features = self.network.encoder(data)
-            seg_outputs = self.network.decoder(encoder_features)
-            bottleneck_feature_0 = encoder_features[-3]
-            bottleneck_feature_1 = encoder_features[-2]
-            bottleneck_feature_2 = encoder_features[-1]
-            
+            encoder_features = self.network.encoder(data)  # list of encoder stage outputs
+
+            # Get bottleneck encoder feature
+            decoder_features, seg_outputs = [], []
+            bottleneck_feature = encoder_features[-1]
+            y = bottleneck_feature
+            for i, stage in enumerate(self.network.decoder.stages):
+
+                y = self.network.decoder.transpconvs[i](y)
+                y = torch.cat((y, encoder_features[-(i+2)]), 1) #NOTE??
+                y = stage(y)
+                decoder_features.append(y)
+
+                if self.enable_deep_supervision:
+                    seg_outputs.append(self.network.decoder.seg_layers[i](y))
+                elif i == (len(self.network.decoder.stages) - 1):
+                    seg_outputs.append(self.network.decoder.seg_layers[-1](y))
+
+
+            # invert seg outputs so that the largest segmentation prediction is returned first
+            seg_outputs = seg_outputs[::-1]
+            if not self.enable_deep_supervision:
+                seg_outputs = seg_outputs[0]
+
+            # Get some decoder features
+            dec_feature1 = decoder_features[0]
+            dec_feature2 = decoder_features[1]  # e.g., final stage before output  
+            dec_feature3 = decoder_features[2]
+            dec_feature4 = decoder_features[3]
+            dec_feature5 = decoder_features[4]
+
+    
             seg_loss = self._compute_segmentation_loss_only(seg_outputs, target)
             
             cls_loss = torch.tensor(0.0, device=self.device)
             if cls_target is not None:
-                cls_logits = self.cls_head(bottleneck_feature_0, bottleneck_feature_1, bottleneck_feature_2)
+                cls_logits = self.cls_head(
+                    bottleneck_feature,
+                    dec_feature1,
+                    dec_feature2,
+                    dec_feature3,
+                    dec_feature4,
+                    dec_feature5)
                 cls_loss = self.cls_loss_fn(cls_logits, cls_target)
-                
 
             total_loss = 0.7 * seg_loss + 0.3 * cls_loss
             # total_loss = 0.7 * seg_loss + self.mt_loss_weight * cls_loss
@@ -219,19 +237,49 @@ class nnUNetTrainer_CLSHeadCA(nnUNetTrainer):
                 cls_target = torch.as_tensor(cls_target, device=self.device)
 
         with autocast(self.device.type, enabled=True) if self.device.type == 'cuda' else dummy_context():
-            # Forward pass - now returns seg_outputs AND encoder_features
-            encoder_features = self.network.encoder(data)
-            seg_outputs = self.network.decoder(encoder_features)
-            bottleneck_feature_0 = encoder_features[-3]
-            bottleneck_feature_1 = encoder_features[-2]
-            bottleneck_feature_2 = encoder_features[-1]
-            
+            # Single forward pass through encoder
+            encoder_features = self.network.encoder(data)  # list of encoder stage outputs
+
+            # Get bottleneck encoder feature
+            decoder_features, seg_outputs = [], []
+            bottleneck_feature = encoder_features[-1]
+            y = bottleneck_feature
+            for i, stage in enumerate(self.network.decoder.stages):
+
+                y = self.network.decoder.transpconvs[i](y)
+                y = torch.cat((y, encoder_features[-(i+2)]), 1) #NOTE??
+                y = stage(y)
+                decoder_features.append(y)
+
+                if self.enable_deep_supervision:
+                    seg_outputs.append(self.network.decoder.seg_layers[i](y))
+                elif i == (len(self.network.decoder.stages) - 1):
+                    seg_outputs.append(self.network.decoder.seg_layers[-1](y))
+
+
+            # invert seg outputs so that the largest segmentation prediction is returned first
+            seg_outputs = seg_outputs[::-1]
+            if not self.enable_deep_supervision:
+                seg_outputs = seg_outputs[0]
+
+            # Get some decoder features
+            dec_feature1 = decoder_features[0]
+            dec_feature2 = decoder_features[1]  # e.g., final stage before output 
+            dec_feature3 = decoder_features[2]
+            dec_feature4 = decoder_features[3]
+            dec_feature5 = decoder_features[4]
 
             seg_loss = self._compute_segmentation_loss_only(seg_outputs, target)
 
             cls_loss = torch.tensor(0.0, device=self.device)
             if cls_target is not None and encoder_features is not None:
-                cls_logits = self.cls_head(bottleneck_feature_0, bottleneck_feature_1, bottleneck_feature_2)
+                cls_logits = self.cls_head(
+                    bottleneck_feature,
+                    dec_feature1,
+                    dec_feature2,
+                    dec_feature3,
+                    dec_feature4,
+                    dec_feature5)
 
                 cls_target = cls_target.long()
                 cls_loss = self.cls_loss_fn(cls_logits, cls_target)
@@ -333,7 +381,6 @@ class nnUNetTrainer_CLSHeadCA(nnUNetTrainer):
                     'cls_head_state': self.cls_head.state_dict() if self.cls_head is not None else None,
                     'mt_num_classes': self.mt_num_classes,
                     'mt_loss_weight': self.mt_loss_weight,
-                    'mt_multilabel': self.mt_multilabel,
                 }
                 torch.save(checkpoint, filename)
             else:
@@ -366,7 +413,7 @@ class nnUNetTrainer_CLSHeadCA(nnUNetTrainer):
         self.network.original_network.load_state_dict(new_state_dict)
         
         # Build and load classification head
-        self._build_cls_head_if_needed()
+        self.build_cls_head_if_needed()
         if checkpoint.get('cls_head_state') is not None:
             self.cls_head.load_state_dict(checkpoint['cls_head_state'])
 

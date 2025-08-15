@@ -14,7 +14,15 @@ from nnunetv2.utilities.helpers import dummy_context
 
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from nnunetv2.training.lr_scheduler.polylr import PolyLRScheduler
+from nnunetv2.utilities.label_handling.label_handling import determine_num_input_channels
+from nnunetv2.utilities.helpers import empty_cache
+from nnunetv2.training.dataloading.nnunet_dataset import infer_dataset_class
+from batchgenerators.utilities.file_and_folder_operations import join, load_json, isfile, save_json, maybe_mkdir_p
+import shutil
+from nnunetv2.utilities.default_n_proc_DA import get_allowed_n_proc_DA
+from nnunetv2.utilities.collate_outputs import collate_outputs
 
+from time import time, sleep
 
 class nnUNetTrainer_CLSHead(nnUNetTrainer):
     """
@@ -24,23 +32,17 @@ class nnUNetTrainer_CLSHead(nnUNetTrainer):
 
     Configuration via environment variables:
     - NNUNETV2_MT_NUM_CLS: number of classification classes (default: 2)
-    - NNUNETV2_MT_LOSS_WEIGHT: lambda weight for classification loss (default: 0.3)
-    - NNUNETV2_MT_MULTILABEL: '1' or 'true' for multilabel (BCEWithLogits), else multiclass (CrossEntropy)
     """
 
     def __init__(self, plans: dict, configuration: str, fold: int, dataset_json: dict,
                  device: torch.device = torch.device('cuda')):
         super().__init__(plans, configuration, fold, dataset_json, device)
         self.mt_num_classes: int = int(os.environ.get('NNUNETV2_MT_NUM_CLS', '2'))
-        self.mt_loss_weight: float = float(os.environ.get('NNUNETV2_MT_LOSS_WEIGHT', '0.3'))
-        self.mt_multilabel: bool = os.environ.get('NNUNETV2_MT_MULTILABEL', '0').lower() in ('1', 'true', 't', 'yes')
 
         self.cls_head: nn.Module = None
         self.cls_loss_fn: nn.Module = None
 
     def _build_cls_head_if_needed(self):
-        if self.cls_head is not None:
-            return
         
         # this is hardcoded for now
         # Input channels for the head come from the encoder (320 channels based on our plan.json for 3d fullers)
@@ -74,39 +76,129 @@ class nnUNetTrainer_CLSHead(nnUNetTrainer):
         self.cls_head = nn.Sequential(
             nn.AdaptiveAvgPool3d(1),  
             nn.Flatten(),
-            nn.LayerNorm(encoder_channels),
+            # nn.LayerNorm(encoder_channels),
             nn.Linear(encoder_channels, self.mt_num_classes)
-        ).to(self.device) # simple LNorm experiment
+        ).to(self.device) # try classification head + encoder only experiment
 
+        self.cls_loss_fn = nn.CrossEntropyLoss()
 
-        weights_fn = torch.tensor([1.3548, 0.7925, 1.0], dtype=torch.float32).to(self.device)
-        self.cls_loss_fn = nn.CrossEntropyLoss(weight=weights_fn)
-        # self.cls_loss_fn = nn.CrossEntropyLoss()
+    # def configure_optimizers(self):
+    #     # Called in initialize() AND we call it again after attaching cls_head in on_train_start.
+    #     # Ensure head exists before creating optimizer so its params are included.
+    #     self._build_cls_head_if_needed()
+    #     # optimizer = torch.optim.SGD(
+    #     #     list(self.network.parameters()) + list(self.cls_head.parameters()),
+    #     #     self.initial_lr, weight_decay=self.weight_decay, momentum=0.99, nesterov=True
+    #     # )
+    #     optimizer = torch.optim.SGD([
+    #                                 {'params': self.network.parameters()},
+    #                                 {'params': self.cls_head.parameters(), 'lr': self.initial_lr * 5}
+    #                             ], lr=self.initial_lr, weight_decay=self.weight_decay, momentum=0.99, nesterov=True)
+    #     from nnunetv2.training.lr_scheduler.polylr import PolyLRScheduler
+    #     lr_scheduler = PolyLRScheduler(optimizer, self.initial_lr, self.num_epochs)
+    #     return optimizer, lr_scheduler
 
-    def configure_optimizers(self):
+    def configure_optimizers_cls_head(self):
         # Called in initialize() AND we call it again after attaching cls_head in on_train_start.
         # Ensure head exists before creating optimizer so its params are included.
-        self._build_cls_head_if_needed()
         # optimizer = torch.optim.SGD(
-        #     list(self.network.parameters()) + list(self.cls_head.parameters()),
-        #     self.initial_lr, weight_decay=self.weight_decay, momentum=0.99, nesterov=True
+        #     list(self.network.encoder.parameters()) + list(self.cls_head.parameters()),
+        #     1e-4, weight_decay=self.weight_decay, momentum=0.99, nesterov=True
         # )
-        optimizer = torch.optim.SGD([
-                                    {'params': self.network.parameters()},
-                                    {'params': self.cls_head.parameters(), 'lr': self.initial_lr * 5}
-                                ], lr=self.initial_lr, weight_decay=self.weight_decay, momentum=0.99, nesterov=True)
-        from nnunetv2.training.lr_scheduler.polylr import PolyLRScheduler
-        lr_scheduler = PolyLRScheduler(optimizer, self.initial_lr, self.num_epochs)
-        return optimizer, lr_scheduler
+        params = list(self.network.encoder.parameters()) + list(self.cls_head.parameters())
+        # print(f"Params: {list(self.network.encoder.parameters())}")
+        print(f"Params size encoder: {len(list(self.network.encoder.parameters()))}")
+        print(f"Params size cls_head: {len(list(self.cls_head.parameters()))}")
+        print(f"Params size total: {len(params)}")
+        optimizer = torch.optim.Adam(
+            params,
+            lr=1e-8 # Use a higher learning rate for the classification head
+        )
+        return optimizer
+
+
+    def initialize(self):
+        if not self.was_initialized:
+            ## DDP batch size and oversampling can differ between workers and needs adaptation
+            # we need to change the batch size in DDP because we don't use any of those distributed samplers
+            self._set_batch_size_and_oversample()
+
+            self.num_input_channels = determine_num_input_channels(self.plans_manager, self.configuration_manager,
+                                                                   self.dataset_json)
+
+            self.network = self.build_network_architecture(
+                self.configuration_manager.network_arch_class_name,
+                self.configuration_manager.network_arch_init_kwargs,
+                self.configuration_manager.network_arch_init_kwargs_req_import,
+                self.num_input_channels,
+                self.label_manager.num_segmentation_heads,
+                self.enable_deep_supervision
+            ).to(self.device)
+            # compile network for free speedup
+            if self._do_i_compile():
+                self.print_to_log_file('Using torch.compile...')
+                self.network = torch.compile(self.network)
+
+            self.dataset_class = infer_dataset_class(self.preprocessed_dataset_folder)
+
+            self.was_initialized = True
+        else:
+            raise RuntimeError("You have called self.initialize even though the trainer was already initialized. "
+                               "That should not happen.")
+
+    def on_train_epoch_start(self):
+        self.network.train()
+        self.print_to_log_file('')
+        self.print_to_log_file(f'Epoch {self.current_epoch}')
+        self.print_to_log_file(
+            f"Current learning rate: {np.round(self.optimizer.param_groups[0]['lr'], decimals=5)}")
+        # lrs are the same for all workers so we don't need to gather them in case of DDP training
+        self.logger.log('lrs', self.optimizer.param_groups[0]['lr'], self.current_epoch)
 
     def on_train_start(self):
-        super().on_train_start()
+        # super().on_train_start()
+        if not self.was_initialized:
+            self.initialize()
+
+        # dataloaders must be instantiated here (instead of __init__) because they need access to the training data
+        # which may not be present  when doing inference
+        self.dataloader_train, self.dataloader_val = self.get_dataloaders()
+
+        maybe_mkdir_p(self.output_folder)
+
+        # make sure deep supervision is on in the network
+        self.set_deep_supervision_enabled(self.enable_deep_supervision)
+
+        self.print_plans()
+        empty_cache(self.device)
+
+        # maybe unpack
+        if self.local_rank == 0:
+            self.dataset_class.unpack_dataset(
+                self.preprocessed_dataset_folder,
+                overwrite_existing=False,
+                num_processes=max(1, round(get_allowed_n_proc_DA() // 2)),
+                verify=True)
+
+        # copy plans and dataset.json so that they can be used for restoring everything we need for inference
+        save_json(self.plans_manager.plans, join(self.output_folder_base, 'plans.json'), sort_keys=False)
+        save_json(self.dataset_json, join(self.output_folder_base, 'dataset.json'), sort_keys=False)
+
+        # we don't really need the fingerprint but its still handy to have it with the others
+        shutil.copy(join(self.preprocessed_dataset_folder_base, 'dataset_fingerprint.json'),
+                    join(self.output_folder_base, 'dataset_fingerprint.json'))
+
+        # produces a pdf in output folder
+        self.plot_network_architecture()
+
+        self._save_debug_information()
+
+        # print(f"batch size: {self.batch_size}")
+        # print(f"oversample: {self.oversample_foreground_percent}")
+
         # Rebuild optimizer to include classification head
         self._build_cls_head_if_needed()
-        self.optimizer, self.lr_scheduler = self.configure_optimizers()
-
-    def _compute_segmentation_loss_only(self, output, target):
-        return self.loss(output, target)
+        self.optimizer = self.configure_optimizers_cls_head()
 
     def _compute_classification_logits(self, encoder_features: torch.Tensor) -> torch.Tensor:
         # Use encoder features (320 channels) as input to the classification head
@@ -116,151 +208,86 @@ class nnUNetTrainer_CLSHead(nnUNetTrainer):
         return self.cls_head(encoder_features)
 
     def train_step(self, batch: dict) -> dict:
+
         data = batch['data']
-        target = batch['target']
-        cls_target = batch.get('cls_target', None)
+        cls_target = batch['cls_target']
 
         data = data.to(self.device, non_blocking=True)
-        if isinstance(target, list):
-            target = [i.to(self.device, non_blocking=True) for i in target]
-        else:
-            target = target.to(self.device, non_blocking=True)
-        if cls_target is not None:
-            if isinstance(cls_target, torch.Tensor):
-                cls_target = cls_target.to(self.device, non_blocking=True)
-            else:
-                # convert numpy/array-like to tensor
-                cls_target = torch.as_tensor(cls_target, device=self.device)
+        cls_target = cls_target.to(self.device, non_blocking=True)
 
-        self.optimizer.zero_grad(set_to_none=True)
+        self.optimizer.zero_grad()
 
-        with autocast(self.device.type, enabled=True) if self.device.type == 'cuda' else dummy_context():
-            # Forward pass - now returns seg_outputs AND encoder_features
-            seg_outputs = self.network(data)
-            with torch.no_grad():
-                encoder_features = self.network.encoder(data)[-1]
-            seg_loss = self._compute_segmentation_loss_only(seg_outputs, target)
+        encoder_features = self.network.encoder(data)[-1]
+        cls_logits = self._compute_classification_logits(encoder_features)
+        
+        cls_target = cls_target.long()
+        total_loss = self.cls_loss_fn(cls_logits, cls_target)
 
-            cls_loss = torch.tensor(0.0, device=self.device)
-            if cls_target is not None and encoder_features is not None:
-                # print(f"Encoder features shape: {encoder_features.shape}")
-                
-                cls_logits = self._compute_classification_logits(encoder_features)
-                
-                cls_target = cls_target.long()
-                cls_loss = self.cls_loss_fn(cls_logits, cls_target)
-
-            total_loss = seg_loss + self.mt_loss_weight * cls_loss
-
-        if self.grad_scaler is not None:
-            self.grad_scaler.scale(total_loss).backward()
-            self.grad_scaler.unscale_(self.optimizer)
-            torch.nn.utils.clip_grad_norm_(list(self.network.parameters()) + list(self.cls_head.parameters()), 12)
-            self.grad_scaler.step(self.optimizer)
-            self.grad_scaler.update()
-        else:
-            total_loss.backward()
-            torch.nn.utils.clip_grad_norm_(list(self.network.parameters()) + list(self.cls_head.parameters()), 12)
-            self.optimizer.step()
+        total_loss.backward()
+        self.optimizer.step()
 
         # Report total loss; optionally also return cls/seg components for debugging
         out = {'loss': total_loss.detach().cpu().numpy()}
-        out['seg_loss'] = seg_loss.detach().cpu().numpy()
-        out['cls_loss'] = cls_loss.detach().cpu().numpy()
-        # print(f"CLS Loss: {cls_loss:.4f}")
-        # if cls_target is not None:
-        #     out['cls_loss'] = cls_loss.detach().cpu().numpy()
+
         return out
 
     def validation_step(self, batch: dict) -> dict:
         data = batch['data']
-        target = batch['target']
-        cls_target = batch.get('cls_target', None)
+        cls_target = batch['cls_target']
 
         data = data.to(self.device, non_blocking=True)
-        if isinstance(target, list):
-            target = [i.to(self.device, non_blocking=True) for i in target]
-        else:
-            target = target.to(self.device, non_blocking=True)
-        if cls_target is not None:
-            if isinstance(cls_target, torch.Tensor):
-                cls_target = cls_target.to(self.device, non_blocking=True)
-            else:
-                cls_target = torch.as_tensor(cls_target, device=self.device)
+        cls_target = cls_target.to(self.device, non_blocking=True)
 
-        with autocast(self.device.type, enabled=True) if self.device.type == 'cuda' else dummy_context():
-            # Forward pass - now returns seg_outputs AND encoder_features
-            seg_outputs = self.network(data)
-            encoder_features = self.network.encoder(data)[-1]
+        self.optimizer.zero_grad()
 
-            seg_loss = self._compute_segmentation_loss_only(seg_outputs, target)
+        encoder_features = self.network.encoder(data)[-1]     
+        cls_logits = self._compute_classification_logits(encoder_features)
+        
+        cls_target = cls_target.long()
+        total_loss = self.cls_loss_fn(cls_logits, cls_target)
 
-            cls_loss = torch.tensor(0.0, device=self.device)
-            if cls_target is not None and encoder_features is not None:
-                cls_logits = self._compute_classification_logits(encoder_features)
+        out = {'loss': total_loss.detach().cpu().numpy()}
 
-                cls_target = cls_target.long()
-                cls_loss = self.cls_loss_fn(cls_logits, cls_target)
-
-            total_loss = seg_loss + self.mt_loss_weight * cls_loss
-
-        # Compute segmentation metrics (pseudo dice) as in base class
-        if self.enable_deep_supervision:
-            output = seg_outputs[0]
-            target_for_metrics = target[0]
-        else:
-            output = seg_outputs
-            target_for_metrics = target
-
-        axes = [0] + list(range(2, output.ndim))
-        if self.label_manager.has_regions:
-            predicted_segmentation_onehot = (torch.sigmoid(output) > 0.5).long()
-        else:
-            output_seg = output.argmax(1)[:, None]
-            predicted_segmentation_onehot = torch.zeros(output.shape, device=output.device, dtype=torch.float32)
-            predicted_segmentation_onehot.scatter_(1, output_seg, 1)
-            del output_seg
-
-        if self.label_manager.has_ignore_label:
-            if not self.label_manager.has_regions:
-                mask = (target_for_metrics != self.label_manager.ignore_label).float()
-                target_for_metrics[target_for_metrics == self.label_manager.ignore_label] = 0
-            else:
-                if target_for_metrics.dtype == torch.bool:
-                    mask = ~target_for_metrics[:, -1:]
-                else:
-                    mask = 1 - target_for_metrics[:, -1:]
-                target_for_metrics = target_for_metrics[:, :-1]
-        else:
-            mask = None
-
-        tp, fp, fn, _ = get_tp_fp_fn_tn(predicted_segmentation_onehot, target_for_metrics, axes=axes, mask=mask)
-        tp_hard = tp.detach().cpu().numpy()
-        fp_hard = fp.detach().cpu().numpy()
-        fn_hard = fn.detach().cpu().numpy()
-        if not self.label_manager.has_regions:
-            tp_hard = tp_hard[1:]
-            fp_hard = fp_hard[1:]
-            fn_hard = fn_hard[1:]
-
-        out = {'loss': total_loss.detach().cpu().numpy(), 'tp_hard': tp_hard, 'fp_hard': fp_hard, 'fn_hard': fn_hard}
-        out['seg_loss'] = seg_loss.detach().cpu().numpy()
-        out['cls_loss'] = cls_loss.detach().cpu().numpy()
         
         # Calculate F1 score for classification if we have classification targets
-        if cls_target is not None and encoder_features is not None:
-            cls_logits = self._compute_classification_logits(encoder_features)
-            # For single label multiclass, use argmax
-            cls_pred = cls_logits.argmax(dim=1)
-            # Convert to numpy for sklearn
-            cls_pred_np = cls_pred.detach().cpu().numpy()
-            cls_target_np = cls_target.detach().cpu().numpy()
-            # Calculate macro F1 score
-            f1_macro = f1_score(cls_target_np, cls_pred_np, average='macro', zero_division=0)
+        # if cls_target is not None and encoder_features is not None:
+        #     cls_logits = self._compute_classification_logits(encoder_features)
+        #     # For single label multiclass, use argmax
+        #     cls_pred = cls_logits.argmax(dim=1)
+        #     # Convert to numpy for sklearn
+        #     cls_pred_np = cls_pred.detach().cpu().numpy()
+        #     cls_target_np = cls_target.detach().cpu().numpy()
+        #     # Calculate macro F1 score
+        #     f1_macro = f1_score(cls_target_np, cls_pred_np, average='macro', zero_division=0)
             
-            print(f"F1 Macro: {f1_macro:.4f}")
+        #     print(f"F1 Macro: {f1_macro:.4f}")
         
         return out
+
+    def on_validation_epoch_end(self, val_outputs: List[dict]):
+        outputs_collated = collate_outputs(val_outputs)
+
+
+        loss_here = np.mean(outputs_collated['loss'])
+        self.logger.log('val_losses', loss_here, self.current_epoch)
+
+    def on_epoch_end(self):
+        self.logger.log('epoch_end_timestamps', time(), self.current_epoch)
+
+        self.print_to_log_file('train_loss', np.round(self.logger.my_fantastic_logging['train_losses'][-1], decimals=4))
+        self.print_to_log_file('val_loss', np.round(self.logger.my_fantastic_logging['val_losses'][-1], decimals=4))
+        self.print_to_log_file(
+            f"Epoch time: {np.round(self.logger.my_fantastic_logging['epoch_end_timestamps'][-1] - self.logger.my_fantastic_logging['epoch_start_timestamps'][-1], decimals=2)} s")
+
+        # handling periodic checkpointing
+        current_epoch = self.current_epoch
+        if (current_epoch + 1) % self.save_every == 0 and current_epoch != (self.num_epochs - 1):
+            self.save_checkpoint(join(self.output_folder, 'checkpoint_latest.pth'))
+
+        if self.local_rank == 0:
+            self.logger.plot_progress_png(self.output_folder)
+
+        self.current_epoch += 1
 
     def save_checkpoint(self, filename: str) -> None:
         if self.local_rank == 0:
@@ -280,14 +307,14 @@ class nnUNetTrainer_CLSHead(nnUNetTrainer):
                     'inference_allowed_mirroring_axes': self.inference_allowed_mirroring_axes,
                     'cls_head_state': self.cls_head.state_dict() if self.cls_head is not None else None,
                     'mt_num_classes': self.mt_num_classes,
-                    'mt_loss_weight': self.mt_loss_weight,
-                    'mt_multilabel': self.mt_multilabel,
                 }
                 torch.save(checkpoint, filename)
             else:
                 self.print_to_log_file('No checkpoint written, checkpointing is disabled')
 
     def load_checkpoint(self, filename_or_checkpoint: Union[dict, str]) -> None:
+        assert False, 'load_checkpoint is not supported for this trainer'
+        print('load_checkpoint')
         if not self.was_initialized:
             self.initialize()
 

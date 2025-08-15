@@ -348,6 +348,7 @@ class nnUNetTrainer(object):
             # set batch size to what the plan says, leave oversample untouched
             self.batch_size = self.configuration_manager.batch_size
         else:
+            assert False, 'DDP is not supported for this trainer'
             # batch size is distributed over DDP workers and we need to change oversample_percent for each worker
 
             world_size = dist.get_world_size()
@@ -1006,6 +1007,7 @@ class nnUNetTrainer(object):
         outputs = collate_outputs(train_outputs)
 
         if self.is_ddp:
+            assert False, 'DDP is not supported for this trainer'
             losses_tr = [None for _ in range(dist.get_world_size())]
             dist.all_gather_object(losses_tr, outputs['loss'])
             loss_here = np.vstack(losses_tr).mean()

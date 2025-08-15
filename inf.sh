@@ -1,5 +1,5 @@
 export nnUNet_preprocessed="/nfs/home/mwei/nnUNet_3d_data/nnUNet_preprocessed"
-export nnUNet_results="/nfs/home/mwei/nnUNet_results/nnUNet_results_bus"
+export nnUNet_results="/nfs/home/mwei/nnUNet_3d_data/nnUNet_results_sum_nopretrain"
 # infer for raw data prediction for segmentation only
 # nnUNetv2_predict \
 #   -i /nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/imagesVal \
@@ -63,14 +63,25 @@ export nnUNet_results="/nfs/home/mwei/nnUNet_results/nnUNet_results_bus"
 #   -chk checkpoint_latest.pth \
 #   --save_probabilities
 
+# python nnunetv2/inference/predict_classification_fast.py \
+#   -i /nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/imagesVal \
+#   -o /nfs/home/mwei/nnUNet_3d_data/nnUNet_results_sum_nopretrain/segreTr_fast \
+#   -co /nfs/home/mwei/nnUNet_3d_data/nnUNet_results_sum_nopretrain/segreTr_fast \
+#   -d Dataset001_3DCT \
+#   -c 3d_fullres \
+#   -tr nnUNetTrainer_CLSHeadSum\
+#   -p nnUNetPlans \
+#   -f 0 \
+#   -chk checkpoint_best.pth \
+#   --save_probabilities
 
-python nnunetv2/inference/predict_classification_fast.py \
+python nnunetv2/inference/predict_classification_fast_CLSHeadSum.py \
   -i /nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/imagesVal \
-  -o /nfs/home/mwei/nnUNet_results/nnUNet_results_bus/segreTr_fast \
-  -co /nfs/home/mwei/nnUNet_results/nnUNet_results_bus/segreTr_fast \
+  -o /nfs/home/mwei/nnUNet_3d_data/nnUNet_results_sum_nopretrain/segreTr_fast \
+  -co /nfs/home/mwei/nnUNet_3d_data/nnUNet_results_sum_nopretrain/segreTr_fast \
   -d Dataset001_3DCT \
   -c 3d_fullres \
-  -tr nnUNetTrainer_CLSHead\
+  -tr nnUNetTrainer_CLSHeadSum\
   -p nnUNetPlans \
   -f 0 \
   -chk checkpoint_best.pth \

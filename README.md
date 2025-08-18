@@ -141,9 +141,9 @@ python nnunetv2/evaluation/evaluate_classification.py \
 
 ```bash
 # 1. Set paths
-export nnUNet_raw="/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw"
-export nnUNet_preprocessed="/nfs/home/mwei/nnUNet_3d_data/nnUNet_preprocessed"
-export nnUNet_results="/nfs/home/mwei/nnUNet_results/nnUNet_results_sum_bs8"
+export nnUNet_raw="/path/to/nnUNet_raw"
+export nnUNet_preprocessed="/path/to/nnUNet_preprocessed"
+export nnUNet_results="/path/to/nnUNet_results_sum_bs8"
 
 # 2. Train model (sum head classification)
 export NNUNETV2_MT_NUM_CLS=3

@@ -36,20 +36,20 @@ class nnUNetTrainer_CLSHeadSimple(nnUNetTrainer):
 
     def build_cls_head(self):
         # cls_head = Classifier3D(self.mt_num_classes).to(self.device)
-        # cls_head = nn.Sequential(
-        #     nn.AdaptiveAvgPool3d(1),  
-        #     nn.Flatten(),
-        #     nn.Linear(320, self.mt_num_classes)
-        # )
-        #simple ver2
         cls_head = nn.Sequential(
             nn.AdaptiveAvgPool3d(1),  
             nn.Flatten(),
-            nn.Linear(320, 256),
-            nn.ReLU(),
-            nn.Linear(256, self.mt_num_classes)
+            nn.Linear(320, self.mt_num_classes)
         )
-        return cls_head
+        #simple ver2
+        # cls_head = nn.Sequential(
+        #     nn.AdaptiveAvgPool3d(1),  
+        #     nn.Flatten(),
+        #     nn.Linear(320, 256),
+        #     nn.ReLU(),
+        #     nn.Linear(256, self.mt_num_classes)
+        # )
+        # return cls_head
     
     def configure_optimizers_cls(self):
         optimizer = torch.optim.SGD(

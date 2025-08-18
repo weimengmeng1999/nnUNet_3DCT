@@ -63,9 +63,19 @@ nnUNetv2_train Dataset001_3DCT 3d_fullres 0 \
   -tr nnUNetTrainer_CLSHeadSimple -p nnUNetPlans --npz
 ```
 
+**Train classification head and segmentation head with different optimizer (from scratch)**
+
+```bash
+export NNUNETV2_MT_NUM_CLS=3
+export NNUNETV2_MT_LOSS_WEIGHT=1
+
+nnUNetv2_train Dataset001_3DCT 3d_fullres 0 \
+  -tr nnUNetTrainer_CLSHeadSepOpt -p nnUNetPlans --npz
+```
 ## Inference
 
 ### Segmentation only
+Inference original nnUNet version.
 
 ```bash
 nnUNetv2_predict \
@@ -81,24 +91,7 @@ nnUNetv2_predict \
 ```
 
 ### Segmentation + Classification
-
-**Slow version:**
-
-```bash
-python nnunetv2/inference/predict_classification.py \
-  -i /path/to/imagesVal \
-  -o /path/to/output \
-  -co /path/to/output \
-  -d Dataset001_3DCT \
-  -c 3d_fullres \
-  -tr nnUNetTrainer_CLSHead \
-  -p nnUNetPlans \
-  -f 0 \
-  -chk checkpoint_best.pth \
-  --save_probabilities
-```
-
-**Fast version:**
+Inference with improved speed.
 
 ```bash
 python nnunetv2/inference/predict_classification_fast_CLSHeadSum.py \
@@ -172,16 +165,30 @@ python nnunetv2/inference/predict_classification_fast_CLSHeadSum.py \
   -chk checkpoint_latest.pth \
   --save_probabilities
 
-# 4. Evaluate classification
+# 4. Evaluate segmentation (pancreas/lesion/background)
+nnUNetv2_evaluate_folder \
+  $nnUNet_raw/Dataset001_3DCT/labelsVal \
+  $nnUNet_results/segreTr_fast \
+  -djfile $nnUNet_raw/Dataset001_3DCT/dataset.json \
+  -pfile $nnUNet_results/Dataset001_3DCT/nnUNetTrainer_CLSHeadSum__nnUNetPlans__3d_fullres/fold_0/plans.json
+
+# 5. Evaluate whole-pancreas segmentation performance
+python nnunetv2/evaluation/evaluate_whole_pancreas.py \
+  $nnUNet_raw/Dataset001_3DCT/labelsVal \
+  $nnUNet_results/segreTr_fast \
+  -djfile $nnUNet_raw/Dataset001_3DCT/dataset.json
+
+# 6. Evaluate classification
 python nnunetv2/evaluation/evaluate_classification.py \
   $nnUNet_results/segreTr_fast \
   $nnUNet_raw/Dataset001_3DCT/classification.json \
   --class-names "subtype0" "subtype1" "subtype2"
+```
 ```
 
 
 ## Notes
 
 - Adjust `NNUNETV2_MT_NUM_CLS` and `NNUNETV2_MT_LOSS_WEIGHT` depending on the number of classes and classification weight in your task.
-- For classification-only training, a pre-trained segmentation model checkpoint must be provided via `NNUNETV2_PRE_CHECKPOINT_PATH`.
+- For fine-tuning classification with segmentation training, a pre-trained segmentation model checkpoint must be provided via `NNUNETV2_PRE_CHECKPOINT_PATH`.
 

@@ -39,22 +39,62 @@ from nnunetv2.preprocessing.resampling.default_resampling import compute_new_sha
 from nnunetv2.preprocessing.preprocessors.default_preprocessor import DefaultPreprocessor
 from nnunetv2.utilities.plans_handling.plans_handler import PlansManager, ConfigurationManager
 
+import torch.nn.functional as F
+
+
+# class Classifier3D(nn.Module):
+#     """3D Classifier for multi-scale nnUNet features"""
+#     def __init__(self, num_classes, encoder_channels=[320, 320, 256, 128, 64, 32]):
+#         super().__init__()
+#         self.avgpool = nn.AdaptiveAvgPool3d(1)
+#         self.fc_layers = nn.ModuleList([
+#             nn.Linear(ch, num_classes) for ch in encoder_channels
+#         ])
+
+#     def forward(self, *features):
+#         outputs = []
+#         for feat, fc in zip(features, self.fc_layers):
+#             pooled = self.avgpool(feat).flatten(1)
+#             outputs.append(fc(pooled))
+#         return sum(outputs)  # sum logits from all scales
+
+#ver7
 class Classifier3D(nn.Module):
-    """3D Classifier for multi-scale nnUNet features"""
-    def __init__(self, num_classes, encoder_channels=[320, 320, 256, 128, 64, 32]):
+    """3D Classifier for multi-scale nnUNet features with Mask-guided ROI pooling + per-scale MLP"""
+    def __init__(self, num_classes, encoder_channels=[320, 320, 256, 128, 64, 32], hidden_dim=128, grid_size=(4,4,4)):
         super().__init__()
-        self.avgpool = nn.AdaptiveAvgPool3d(1)
-        self.fc_layers = nn.ModuleList([
-            nn.Linear(ch, num_classes) for ch in encoder_channels
+        self.grid_size = grid_size  # adaptive pooling grid
+        # Per-scale MLPs: input = ch * grid_volume, hidden = ch//2, output = num_classes
+        self.mlp_layers = nn.ModuleList([
+            nn.Sequential(
+                nn.Linear(ch * grid_size[0] * grid_size[1] * grid_size[2], ch // 2),
+                nn.ReLU(),
+                nn.Linear(ch // 2, num_classes)
+            ) for ch in encoder_channels
         ])
+        # Final FC combines all per-scale logits
+        self.final_fc = nn.Linear(num_classes * len(encoder_channels), num_classes)
 
-    def forward(self, *features):
-        outputs = []
-        for feat, fc in zip(features, self.fc_layers):
-            pooled = self.avgpool(feat).flatten(1)
-            outputs.append(fc(pooled))
-        return sum(outputs)  # sum logits from all scales
+    def forward(self, *features, masks=None):
+        """
+        features: list of encoder features at multiple scales (B x C x D x H x W)
+        masks: segmentation masks (B x 1 x D x H x W), optional
+        """
+        logits_list = []
+        for feat, mlp in zip(features, self.mlp_layers):
+            if masks is not None:
+                # Resize mask to feature spatial size
+                mask_resized = F.interpolate(masks.float(), size=feat.shape[2:], mode='trilinear', align_corners=False)
+                feat = feat * mask_resized  # apply mask
 
+            # Adaptive ROI pooling to small 3D grid
+            pooled = F.adaptive_max_pool3d(feat, output_size=self.grid_size)
+            pooled = pooled.view(feat.shape[0], -1)  # flatten to B x (C*grid_volume)
+
+            logits_list.append(mlp(pooled))  # per-scale logits
+
+        concat_logits = torch.cat(logits_list, dim=1)
+        return self.final_fc(concat_logits)
 
 class FastPreprocessor(DefaultPreprocessor):
     def run_case_npy(self, data: np.ndarray, seg: Union[np.ndarray, None], properties: dict,

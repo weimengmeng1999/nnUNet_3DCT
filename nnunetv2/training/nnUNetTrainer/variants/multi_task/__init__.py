@@ -2,4 +2,5 @@ from .nnUNetTrainerClassificationHead import nnUNetTrainer_CLSHead
 from .nnUNetTrainerClassificationHeadSepOpt import nnUNetTrainer_CLSHeadSepOpt
 from .nnUNetTrainerClassificationHeadCA import nnUNetTrainer_CLSHeadCA
 from .nnUNetTrainerClassificationHeadSum import nnUNetTrainer_CLSHeadSum
+from .nnUNetTrainerClassificationHeadSumFT import nnUNetTrainer_CLSHeadSumFT
 from .nnUNetTrainerClassificationHeadSimple import nnUNetTrainer_CLSHeadSimple

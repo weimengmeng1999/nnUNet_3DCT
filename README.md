@@ -26,11 +26,31 @@ Note: if you use T4 GPU on colab, this will give you batch size 3 for your plans
 
 ## Training
 
-### General Syntax
+Follow the instructions or use **[train.sh](train.sh)** to conduct training.
+
+### Train from Scratch
+
+Train the segmentation head with classification head together from scratch.
 
 ```bash
-nnUNetv2_train DATASET_NAME_OR_ID UNET_CONFIGURATION FOLD [additional options]
+export NNUNETV2_MT_NUM_CLS=3
+export NNUNETV2_MT_LOSS_WEIGHT=0.3
+
+nnUNetv2_train Dataset001_3DCT 3d_fullres 0 \
+  -tr nnUNetTrainer_CLSHeadSum -p nnUNetPlans --npz
 ```
+
+### Fine-tune from Pre-trained
+
+Fin-tune the classification head and original nnUNet network (encoder + segmentation head) from the pre-trained weights that trained only for segmentation.
+
+```bash
+export NNUNETV2_MT_NUM_CLS=3 #your number of classes
+export NNUNETV2_MT_LOSS_WEIGHT=0.3 #lambda for cls loss 
+export NNUNETV2_PRE_CHECKPOINT_PATH="/path/to/checkpoint_best.pth"
+nnUNetv2_train Dataset001_3DCT 3d_fullres 0 -tr nnUNetTrainer_CLSHeadSumFT -p nnUNetPlans --npz
+```
+### Train 
 
 ### Examples
 

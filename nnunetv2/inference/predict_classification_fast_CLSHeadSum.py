@@ -242,7 +242,263 @@ class nnUNetPredictorWithClassification(nnUNetPredictor):
         if self.cls_output_folder is not None and cls_results is not None:
             output_file = join(self.cls_output_folder, f"{case_identifier}_classification.json")
             save_json(cls_results, output_file)
+    
+    @torch.inference_mode()
+    def _internal_maybe_mirror_and_predict_with_features(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Modified version that returns both prediction and encoder features
+        """
+        mirror_axes = self.allowed_mirroring_axes if self.use_mirroring else None
+        
+        # Get prediction and features from network (original orientation only for features)
+        prediction = self.network(x)
+        # features = self.network.encoder(x)[-1]
 
+        encoder_features = self.network.encoder(x)  # list of encoder stage outputs
+
+        # Get bottleneck encoder feature
+        decoder_features = []
+        bottleneck_feature = encoder_features[-1]
+        y = bottleneck_feature
+        for i, stage in enumerate(self.network.decoder.stages):
+
+            y = self.network.decoder.transpconvs[i](y)
+            y = torch.cat((y, encoder_features[-(i+2)]), 1) #NOTE??
+            y = stage(y)
+            decoder_features.append(y)
+
+        # Get some decoder features
+        dec_feature1 = decoder_features[0]
+        dec_feature2 = decoder_features[1]  # e.g., final stage before output  
+        dec_feature3 = decoder_features[2]
+        dec_feature4 = decoder_features[3]
+        dec_feature5 = decoder_features[4]
+
+        cls_logits = self.cls_head(
+            bottleneck_feature,
+            dec_feature1,
+            dec_feature2,
+            dec_feature3,
+            dec_feature4,
+            dec_feature5)
+
+        
+        # For TTA, only augment predictions, keep original features
+        if mirror_axes is not None:
+            assert max(mirror_axes) <= x.ndim - 3, 'mirror_axes does not match the dimension of the input!'
+
+            mirror_axes = [m + 2 for m in mirror_axes]
+            axes_combinations = [
+                c for i in range(len(mirror_axes)) for c in itertools.combinations(mirror_axes, i + 1)
+            ]
+            
+            for axes in axes_combinations:
+                flipped_x = torch.flip(x, axes)
+                flipped_output = self.network(flipped_x)
+                
+                if isinstance(flipped_output, (list, tuple)):
+                    flipped_pred = flipped_output[0]
+                else:
+                    flipped_pred = flipped_output
+                
+                prediction += torch.flip(flipped_pred, axes)
+            
+            prediction /= (len(axes_combinations) + 1)
+            # Keep original features unchanged
+        
+        return prediction, cls_logits
+        
+    @torch.inference_mode()
+    def _internal_predict_sliding_window_return_logits_and_features(self,
+                                                       data: torch.Tensor,
+                                                       slicers,
+                                                       do_on_device: bool = True,
+                                                       ):
+        """
+        Modified version that returns both logits and features - FIXED VERSION
+        """
+        predicted_logits = n_predictions = prediction = gaussian = workon = None
+        results_device = self.device if do_on_device else torch.device('cpu')
+        
+        # Store all features from patches to average them properly
+        cls_logits = [] 
+
+        def producer(d, slh, q):
+            for s in slh:
+                q.put((torch.clone(d[s][None], memory_format=torch.contiguous_format).to(self.device), s))
+            q.put('end')
+
+        try:
+            empty_cache(self.device)
+
+            # move data to device
+            if self.verbose:
+                print(f'move image to device {results_device}')
+            data = data.to(results_device)
+            queue = Queue(maxsize=2)
+            t = Thread(target=producer, args=(data, slicers, queue))
+            t.start()
+
+            # preallocate arrays
+            if self.verbose:
+                print(f'preallocating results arrays on device {results_device}')
+            predicted_logits = torch.zeros((self.label_manager.num_segmentation_heads, *data.shape[1:]),
+                                           dtype=torch.half,
+                                           device=results_device)
+            n_predictions = torch.zeros(data.shape[1:], dtype=torch.half, device=results_device)
+
+            if self.use_gaussian:
+                gaussian = compute_gaussian(tuple(self.configuration_manager.patch_size), sigma_scale=1. / 8,
+                                            value_scaling_factor=10,
+                                            device=results_device)
+            else:
+                gaussian = 1
+
+            if not self.allow_tqdm and self.verbose:
+                print(f'running prediction: {len(slicers)} steps')
+
+            with tqdm(desc=None, total=len(slicers), disable=not self.allow_tqdm) as pbar:
+                while True:
+                    item = queue.get()
+                    if item == 'end':
+                        queue.task_done()
+                        break
+                    workon, sl = item
+                    
+                    # Get both prediction and features
+                    prediction, cls_logit= self._internal_maybe_mirror_and_predict_with_features(workon)
+                    prediction = prediction[0].to(results_device)  # Take first output if multiple
+
+                    if self.use_gaussian:
+                        prediction *= gaussian
+                    predicted_logits[sl] += prediction
+                    n_predictions[sl[1:]] += gaussian
+
+                    cls_logits.append(cls_logit.clone().to(results_device))
+                    
+                    
+                    queue.task_done()
+                    pbar.update()
+            queue.join()
+
+            # Average logits
+            torch.div(predicted_logits, n_predictions, out=predicted_logits)
+            
+            cls_logits = torch.stack(cls_logits).mean(dim=0)
+            # # FIXED: Average all features
+            # if cls_logits:
+            #     cls_logits = torch.stack(cls_logits).mean(dim=0)
+            # else:
+            #     cls_logits = None
+
+
+            # check for infs
+            if torch.any(torch.isinf(predicted_logits)):
+                raise RuntimeError('Encountered inf in predicted array. Aborting... If this problem persists, '
+                                   'reduce value_scaling_factor in compute_gaussian or increase the dtype of '
+                                   'predicted_logits to fp32')
+        except Exception as e:
+            del predicted_logits, n_predictions, prediction, gaussian, workon, cls_logits
+            empty_cache(self.device)
+            empty_cache(results_device)
+            raise e
+        
+        return predicted_logits, cls_logits
+
+    @torch.inference_mode()
+    def predict_sliding_window_return_logits_and_features(self, input_image: torch.Tensor) \
+            -> Union[Tuple[np.ndarray, np.ndarray], Tuple[torch.Tensor, torch.Tensor]]:
+        """
+        Modified version that returns both logits and features
+        """
+        assert isinstance(input_image, torch.Tensor)
+        self.network = self.network.to(self.device)
+        self.network.eval()
+
+        empty_cache(self.device)
+
+        with torch.autocast(self.device.type, enabled=True) if self.device.type == 'cuda' else dummy_context():
+            assert input_image.ndim == 4, 'input_image must be a 4D np.ndarray or torch.Tensor (c, x, y, z)'
+
+            if self.verbose:
+                print(f'Input shape: {input_image.shape}')
+                print("step_size:", self.tile_step_size)
+                print("mirror_axes:", self.allowed_mirroring_axes if self.use_mirroring else None)
+
+            # if input_image is smaller than tile_size we need to pad it to tile_size.
+            data, slicer_revert_padding = pad_nd_image(input_image, self.configuration_manager.patch_size,
+                                                       'constant', {'value': 0}, True,
+                                                       None)
+
+            slicers = self._internal_get_sliding_window_slicers(data.shape[1:])
+
+            if self.perform_everything_on_device and self.device != 'cpu':
+                try:
+                    predicted_logits, cls_logits = self._internal_predict_sliding_window_return_logits_and_features(data, slicers,
+                                                                                           self.perform_everything_on_device)
+                except RuntimeError:
+                    print(
+                        'Prediction on device was unsuccessful, probably due to a lack of memory. Moving results arrays to CPU')
+                    empty_cache(self.device)
+                    predicted_logits, cls_logits = self._internal_predict_sliding_window_return_logits_and_features(data, slicers, False)
+            else:
+                predicted_logits, cls_logits = self._internal_predict_sliding_window_return_logits_and_features(data, slicers,
+                                                                                       self.perform_everything_on_device)
+            empty_cache(self.device)
+            # revert padding
+            predicted_logits = predicted_logits[(slice(None), *slicer_revert_padding[1:])]
+            
+        return predicted_logits, cls_logits
+
+    @torch.inference_mode()
+    def predict_logits_from_preprocessed_data(self, data: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Modified version that returns both logits and encoder features - FIXED VERSION
+        """
+        n_threads = torch.get_num_threads()
+        torch.set_num_threads(self.configuration_manager.default_num_processes if hasattr(self.configuration_manager, 'default_num_processes') else 3)
+        prediction = None
+        features = None
+
+        for i, params in enumerate(self.list_of_parameters):
+            # Load model parameters
+            if not isinstance(self.network, torch._dynamo.OptimizedModule):
+                self.network.load_state_dict(params)
+            else:
+                self.network._orig_mod.load_state_dict(params)
+
+            if prediction is None:
+                predicted_logits, cls_logits = self.predict_sliding_window_return_logits_and_features(data)
+                print(f'Fold {i}: predicted_logits shape: {predicted_logits.size()}')
+                print(f'Fold {i}: predicted_cls_logits shape: {cls_logits.size()}')
+                prediction = predicted_logits.to('cpu')
+                cls_logits= cls_logits.to('cpu') if cls_logits is not None else None
+            else:
+                predicted_logits, cls_logits= self.predict_sliding_window_return_logits_and_features(data)
+                prediction += predicted_logits.to('cpu')
+                # FIXED: Only average features if we're actually using multiple folds
+                # For classification, we typically only use the first fold's features
+                if i == 0:  # Keep features from first fold only
+                    cls_logits = cls_logits.to('cpu')
+
+        if len(self.list_of_parameters) > 1:
+            prediction /= len(self.list_of_parameters)
+            # Don't average features - use first fold's features for classification
+            
+        print('Final prediction shape:', prediction.size())
+        print('cls shape:', cls_logits.size() if cls_logits is not None else None)
+
+        if self.verbose: print('Prediction done')
+        torch.set_num_threads(n_threads)
+        return prediction, cls_logits   
+
+    def predict_logits_and_features_from_preprocessed_data(self, data: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Use the new method to get both segmentation logits and encoder features
+        """
+        seg_logits, cls_logits = self.predict_logits_from_preprocessed_data(data)
+        
+        return seg_logits, cls_logits
 
     def predict_from_files_sequential(self,
                            list_of_lists_or_source_folder: Union[str, List[List[str]]],
@@ -320,44 +576,18 @@ class nnUNetPredictorWithClassification(nnUNetPredictor):
                 print(f'perform_everything_on_device: {self.perform_everything_on_device}')
 
             # Predict segmentation AND get encoder features
-            seg_logits = self.predict_logits_from_preprocessed_data(
+            seg_logits, cls_logits = self.predict_logits_and_features_from_preprocessed_data(
                 torch.from_numpy(data)
             )
-            
-            # Use encoder features for classification
-            cls_results = None
 
             case_name = os.path.basename(of) if of else f"case_{case_idx}"
             print(f"Case: {case_name}")
-            with torch.no_grad():
-                encoder_features = self.network.encoder(torch.from_numpy(data))  # list of encoder stage outputs
 
-                # Get bottleneck encoder feature
-                decoder_feature = []
-                bottleneck_feature = encoder_features[-1]
-                y = bottleneck_feature
-                for i, stage in enumerate(self.network.decoder.stages):
-
-                    y = self.network.decoder.transpconvs[i](y)
-                    y = torch.cat((y, encoder_features[-(i+2)]), 1) #NOTE??
-                    y = stage(y)
-                    decoder_features.append(y)
-
-                # Get some decoder features
-                dec_feature1 = decoder_features[0]
-                dec_feature2 = decoder_features[1]  # e.g., final stage before output  
-                dec_feature3 = decoder_features[2]
-                dec_feature4 = decoder_features[3]
-                dec_feature5 = decoder_features[4]
-
-                cls_logits = self.cls_head(
-                    bottleneck_feature,
-                    dec_feature1,
-                    dec_feature2,
-                    dec_feature3,
-                    dec_feature4,
-                    dec_feature5)
-
+            # Handle batch dimension
+            if cls_logits.ndim > 1:
+                cls_logits = cls_logits.squeeze(0)
+            
+            # Single label classification
             probs = torch.softmax(cls_logits, dim=0).tolist()
             pred_label = int(torch.argmax(cls_logits).item())
             
@@ -370,32 +600,9 @@ class nnUNetPredictorWithClassification(nnUNetPredictor):
                 "probs": probs,
                 "pred": pred_label,
                 "num_classes": self.mt_num_classes
-                }
-                
-                # with torch.no_grad():
-                #     # Move to device and ensure float precision
-                #     pooled = encoder_features.to(self.device).float()
-                    
-                #     cls_logits = self.cls_head(pooled)
-                    
-                #     # Handle batch dimension
-                #     if cls_logits.ndim > 1:
-                #         cls_logits = cls_logits.squeeze(0)
-                    
-                #     # Single label classification
-                #     probs = torch.softmax(cls_logits, dim=0).tolist()
-                #     pred_label = int(torch.argmax(cls_logits).item())
-                    
-                #     print(f"  Classification logits: {[f'{x:.4f}' for x in cls_logits.tolist()]}")
-                #     print(f"  Classification probs: {[f'{x:.4f}' for x in probs]}")
-                #     print(f"  Predicted class: {pred_label}")
-                    
-                #     cls_results = {
-                #         "logits": [float(x) for x in cls_logits.tolist()],
-                #         "probs": probs,
-                #         "pred": pred_label,
-                #         "num_classes": self.mt_num_classes
-                #     }
+            }
+
+
 
             # Export segmentation
             if of is not None:
@@ -434,23 +641,23 @@ def predict_entry_point_with_classification():
     parser = argparse.ArgumentParser(
         description="Extended nnU-Net prediction with classification support using encoder features"
     )
-    parser.add_argument('-i', type=str, required=True,
+    parser.add_argument('-i', type=str, required=False, default= "/home/mengwei/Downloads/nnUNet_code/data/nnUNet_raw/Dataset001_3DCT/imagesTr",
                        help='input folder. Remember to use the correct channel numberings for your files (_0000 etc). '
                              'File endings must be the same as the training dataset!')
-    parser.add_argument('-o', type=str, required=True,
+    parser.add_argument('-o', type=str, required=False, default = "/home/mengwei/Downloads/nnUNet_code/data/nnUNet_results_sum_lr1e-3/segVal_fast",
                        help='Output folder. If it does not exist it will be created. Predicted segmentations will '
                              'have the same name as their source images.')
-    parser.add_argument('-co', '--cls_output_folder', type=str, default=None,
+    parser.add_argument('-co', '--cls_output_folder', type=str, default="/home/mengwei/Downloads/nnUNet_code/data/nnUNet_results_sum_lr1e-3/segVal_fast",
                        help='Output folder for classification JSONs (default: output_folder/classification)')
-    parser.add_argument('-d', type=str, required=True,
+    parser.add_argument('-d', type=str, required=False, default="Dataset001_3DCT",
                        help='Dataset with which you would like to predict. You can specify either dataset name or id')
     parser.add_argument('-p', type=str, required=False, default='nnUNetPlans',
                        help='Plans identifier. Default: nnUNetPlans')
-    parser.add_argument('-tr', type=str, required=False, default='nnUNetTrainer',
+    parser.add_argument('-tr', type=str, required=False, default='nnUNetTrainer_CLSHeadSum',
                        help='What nnU-Net trainer class was used for training? Default: nnUNetTrainer')
-    parser.add_argument('-c', type=str, required=True,
+    parser.add_argument('-c', type=str, required=False, default="3d_fullres",
                        help='nnU-Net configuration that should be used for prediction')
-    parser.add_argument('-f', nargs='+', type=str, required=False, default=(0, 1, 2, 3, 4),
+    parser.add_argument('-f', nargs='+', type=str, required=False, default="0",
                        help='Specify the folds of the trained model that should be used for prediction. '
                              'Default: (0, 1, 2, 3, 4)')
     parser.add_argument('-step_size', type=float, required=False, default=0.5,
@@ -458,11 +665,11 @@ def predict_entry_point_with_classification():
     parser.add_argument('--disable_tta', action='store_true', required=False, default=False,
                        help='Set this flag to disable test time data augmentation')
     parser.add_argument('--verbose', action='store_true', help="Set this if you like being talked to")
-    parser.add_argument('--save_probabilities', action='store_true',
+    parser.add_argument('--save_probabilities', action='store_true',default=True,
                        help='Set this to export predicted class "probabilities"')
     parser.add_argument('--continue_prediction', action='store_true',
                        help='Continue an aborted previous prediction (will not overwrite existing files)')
-    parser.add_argument('-chk', type=str, required=False, default='checkpoint_final.pth',
+    parser.add_argument('-chk', type=str, required=False, default='checkpoint_best.pth',
                        help='Name of the checkpoint you want to use. Default: checkpoint_final.pth')
     parser.add_argument('-prev_stage_predictions', type=str, required=False, default=None,
                        help='Folder containing the predictions of the previous stage. Required for cascaded models.')
@@ -473,6 +680,7 @@ def predict_entry_point_with_classification():
                        help='Set this flag to disable progress bar')
     
     args = parser.parse_args()
+    args.f = ['0']
     args.f = [i if i == 'all' else int(i) for i in args.f]
 
     start_time = time.time()
@@ -552,4 +760,19 @@ def predict_entry_point_with_classification():
 
 
 if __name__ == '__main__':
+    # import sys
+    # sys.argv = [
+    #     'predict_classification_fast_CLSHeadSum.py',
+    #     '-i', '/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/imagesVal',
+    #     '-o', '/nfs/home/mwei/nnUNet_3d_data/nnUNet_results_sum_nopretrain/segreTr_fast',
+    #     '-co', '/nfs/home/mwei/nnUNet_3d_data/nnUNet_results_sum_nopretrain/segreTr_fast',
+    #     '-d', 'Dataset001_3DCT',
+    #     '-c', '3d_fullres',
+    #     '-tr', 'nnUNetTrainer_CLSHeadSum',
+    #     '-p', 'nnUNetPlans',
+    #     '-f', '0',
+    #     '-chk', 'checkpoint_best.pth',
+    #     '--save_probabilities'
+    # ]
+
     predict_entry_point_with_classification()

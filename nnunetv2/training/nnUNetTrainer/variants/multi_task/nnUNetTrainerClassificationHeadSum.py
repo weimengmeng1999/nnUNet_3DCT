@@ -12,31 +12,14 @@ from nnunetv2.training.loss.dice import get_tp_fp_fn_tn
 from nnunetv2.utilities.helpers import dummy_context
 from nnunetv2.training.lr_scheduler.polylr import PolyLRScheduler
 import torch.nn.functional as F
+from sklearn.metrics import accuracy_score, f1_score
+from batchgenerators.utilities.file_and_folder_operations import join, maybe_mkdir_p
+from nnunetv2.utilities.collate_outputs import collate_outputs
 
 from torch.nn import init
+from time import time
 
-# class CA_Module_3D(nn.Module):
-#     """3D Channel Attention (Modified from your 2D version)"""
-#     def __init__(self, in_channel):
-#         super().__init__()
-#         self.avgpool = nn.AdaptiveAvgPool3d(1)  # Changed to 3D
-#         self.maxpool = nn.AdaptiveMaxPool3d(1)   # Changed to 3D
-        
-#         self.linear = nn.Sequential(
-#             nn.Linear(2 * in_channel, max(4, in_channel // 16)),  # Avoid too small dims
-#             nn.ReLU(),
-#             nn.Linear(max(4, in_channel // 16), in_channel),
-#             nn.Sigmoid()
-#         )
-
-#     def forward(self, x):
-#         b, c, _, _, _ = x.size()  # 3D shape
-#         p1 = self.avgpool(x).flatten(1)
-#         p2 = self.maxpool(x).flatten(1)
-#         p = torch.cat([p1, p2], dim=1)
-#         po = self.linear(p).view(b, c, 1, 1, 1)  # 3D reshape
-#         return x * po  # Remove ReLU to prevent dead neurons
-
+#ver1
 # class Classifier3D(nn.Module):
 #     """3D Classifier for multi-scale nnUNet features"""
 #     def __init__(self, num_classes, encoder_channels=[320, 320, 256, 128, 64, 32]):
@@ -52,25 +35,180 @@ from torch.nn import init
 #             pooled = self.avgpool(feat).flatten(1)
 #             outputs.append(fc(pooled))
 #         return sum(outputs)  # sum logits from all scales
+
+#ver2
+#alternative version of classifier head with max pooling and linear layer for concatenation of all scales features
+# class Classifier3D(nn.Module):
+#     """3D Classifier for multi-scale nnUNet features"""
+#     def __init__(self, num_classes, encoder_channels=[320, 320, 256, 128, 64, 32]):
+#         super().__init__()
+#         self.pool = nn.AdaptiveMaxPool3d(1)  # global max pooling
+#         self.fc_layers = nn.ModuleList([
+#             nn.Linear(ch, num_classes) for ch in encoder_channels
+#         ])
+#         self.final_fc = nn.Linear(num_classes * len(encoder_channels), num_classes)
+
+#     def forward(self, *features):
+#         logits_list = []
+#         for feat, fc in zip(features, self.fc_layers):
+#             pooled = self.pool(feat).flatten(1)
+#             logits_list.append(fc(pooled))  # per-scale logits
+
+#         concat_logits = torch.cat(logits_list, dim=1)
+#         return self.final_fc(concat_logits)
+
+#ver3
+#alternative version of classifier head with max pooling and avg pooling and linear layer for concatenation of all scales features
+# class Classifier3D(nn.Module):
+#     """3D Classifier for multi-scale nnUNet features with GAP + GMP pooling"""
+#     def __init__(self, num_classes, encoder_channels=[320, 320, 256, 128, 64, 32]):
+#         super().__init__()
+#         # input dimension doubles because we concat GAP + GMP
+#         self.fc_layers = nn.ModuleList([
+#             nn.Linear(ch * 2, num_classes) for ch in encoder_channels
+#         ])
+#         self.final_fc = nn.Linear(num_classes * len(encoder_channels), num_classes)
+
+#     def forward(self, *features):
+#         logits_list = []
+#         for feat, fc in zip(features, self.fc_layers):
+#             avg_pooled = F.adaptive_avg_pool3d(feat, 1).flatten(1)
+#             max_pooled = F.adaptive_max_pool3d(feat, 1).flatten(1)
+#             pooled = torch.cat([avg_pooled, max_pooled], dim=1)
+#             logits_list.append(fc(pooled))  # per-scale logits
+
+#         concat_logits = torch.cat(logits_list, dim=1)
+#         return self.final_fc(concat_logits)
+
+#ver4
+#ver 3 with dropout
+# class Classifier3D(nn.Module):
+#     """3D Classifier for multi-scale nnUNet features with GAP + GMP pooling"""
+#     def __init__(self, num_classes, encoder_channels=[320, 320, 256, 128, 64, 32]):
+#         super().__init__()
+#         # input dimension doubles because we concat GAP + GMP
+#         self.fc_layers = nn.ModuleList([
+#             nn.Linear(ch * 2, num_classes) for ch in encoder_channels
+#         ])
+#         self.dropout = nn.Dropout(p=0.3)
+#         self.final_fc = nn.Linear(num_classes * len(encoder_channels), num_classes)
+
+#     def forward(self, *features):
+#         logits_list = []
+#         for feat, fc in zip(features, self.fc_layers):
+#             avg_pooled = F.adaptive_avg_pool3d(feat, 1).flatten(1)
+#             max_pooled = F.adaptive_max_pool3d(feat, 1).flatten(1)
+#             pooled = torch.cat([avg_pooled, max_pooled], dim=1)
+#             logits_list.append(fc(pooled))  # per-scale logits
+
+#         concat_logits = torch.cat(logits_list, dim=1)
+#         concat_logits = self.dropout(concat_logits)
+#         return self.final_fc(concat_logits)
+
+#ver5 
+# class Classifier3D(nn.Module):
+#     """3D Classifier for multi-scale nnUNet features with GMP pooling + per-scale MLP"""
+#     def __init__(self, num_classes, encoder_channels=[320, 320, 256, 128, 64, 32], hidden_dim=128):
+#         super().__init__()
+#         # Per-scale MLPs: input = ch (GMP only), hidden = hidden_dim, output = num_classes
+#         self.mlp_layers = nn.ModuleList([
+#             nn.Sequential(
+#                 nn.Linear(ch, ch // 2),
+#                 nn.ReLU(),
+#                 nn.Linear(ch // 2, num_classes)
+#             ) for ch in encoder_channels
+#         ])
+#         # Final FC combines all per-scale logits
+#         self.final_fc = nn.Linear(num_classes * len(encoder_channels), num_classes)
+
+#     def forward(self, *features):
+#         logits_list = []
+#         for feat, mlp in zip(features, self.mlp_layers):
+#             max_pooled = F.adaptive_max_pool3d(feat, 1).flatten(1)  # GMP only
+#             logits_list.append(mlp(max_pooled))  # per-scale logits via MLP
+
+#         concat_logits = torch.cat(logits_list, dim=1)
+#         return self.final_fc(concat_logits)
+
+#ver6
+# class Classifier3D(nn.Module):
+#     """3D Classifier for multi-scale nnUNet features"""
+#     def __init__(self, num_classes, encoder_channels=[320, 320, 256, 128, 64, 32]):
+#         super().__init__()
+#         self.avgpool = nn.AdaptiveAvgPool3d(1)
+#         # self.fc_layers = nn.ModuleList([
+#         #     nn.Linear(ch, num_classes) for ch in encoder_channels
+#         # ])
+#         self.fc_layers = nn.ModuleList([
+#             nn.Sequential(
+#                 nn.Linear(ch, ch // 2),
+#                 nn.ReLU(),
+#                 nn.Linear(ch // 2, num_classes)
+#             ) for ch in encoder_channels
+#         ])
+    # def forward(self, *features):
+    #     outputs = []
+    #     for feat, fc in zip(features, self.fc_layers):
+    #         pooled = self.avgpool(feat).flatten(1)
+    #         outputs.append(fc(pooled))
+    #     return sum(outputs)  # sum logits from all scales
+
+#ver7
 class Classifier3D(nn.Module):
-    """3D Classifier for multi-scale nnUNet features"""
-    def __init__(self, num_classes, encoder_channels=[320, 320, 256, 128, 64, 32]):
+    """3D Classifier for multi-scale nnUNet features with Mask-guided ROI pooling + per-scale MLP"""
+    def __init__(self, num_classes, encoder_channels=[320, 320, 256, 128, 64, 32], hidden_dim=128, grid_size=(4,4,4)):
         super().__init__()
-        self.pool = nn.AdaptiveMaxPool3d(1)  # global max pooling
-        self.fc_layers = nn.ModuleList([
-            nn.Linear(ch, num_classes) for ch in encoder_channels
+        self.grid_size = grid_size  # adaptive pooling grid
+        # Per-scale MLPs: input = ch * grid_volume, hidden = ch//2, output = num_classes
+        self.mlp_layers = nn.ModuleList([
+            nn.Sequential(
+                nn.Linear(ch * grid_size[0] * grid_size[1] * grid_size[2], ch // 2),
+                nn.ReLU(),
+                nn.Linear(ch // 2, num_classes)
+            ) for ch in encoder_channels
         ])
+        # Final FC combines all per-scale logits
         self.final_fc = nn.Linear(num_classes * len(encoder_channels), num_classes)
 
-    def forward(self, *features):
+    def forward(self, *features, masks=None):
+        """
+        features: list of encoder features at multiple scales (B x C x D x H x W)
+        masks: segmentation masks (B x 1 x D x H x W), optional
+        """
         logits_list = []
-        for feat, fc in zip(features, self.fc_layers):
-            pooled = self.pool(feat).flatten(1)
-            logits_list.append(fc(pooled))  # per-scale logits
+        for feat, mlp in zip(features, self.mlp_layers):
+            if masks is not None:
+                # Resize mask to feature spatial size
+                mask_resized = F.interpolate(masks.float(), size=feat.shape[2:], mode='trilinear', align_corners=False)
+                feat = feat * mask_resized  # apply mask
+
+            # Adaptive ROI pooling to small 3D grid
+            pooled = F.adaptive_max_pool3d(feat, output_size=self.grid_size)
+            pooled = pooled.view(feat.shape[0], -1)  # flatten to B x (C*grid_volume)
+
+            logits_list.append(mlp(pooled))  # per-scale logits
 
         concat_logits = torch.cat(logits_list, dim=1)
         return self.final_fc(concat_logits)
 
+class FocalLoss(nn.Module):
+    def __init__(self, alpha=1.0, gamma=2.0, reduction='mean'):
+        super().__init__()
+        self.alpha = alpha
+        self.gamma = gamma
+        self.reduction = reduction
+    
+    def forward(self, inputs, targets):
+        ce_loss = F.cross_entropy(inputs, targets, reduction='none')
+        pt = torch.exp(-ce_loss)  # probability of correct class
+        focal_loss = self.alpha * (1 - pt) ** self.gamma * ce_loss
+        
+        if self.reduction == 'mean':
+            return focal_loss.mean()
+        elif self.reduction == 'sum':
+            return focal_loss.sum()
+        else:
+            return focal_loss 
 
 class nnUNetTrainer_CLSHeadSum(nnUNetTrainer):
     def __init__(self, plans: dict, configuration: str, fold: int, dataset_json: dict,
@@ -78,7 +216,8 @@ class nnUNetTrainer_CLSHeadSum(nnUNetTrainer):
         super().__init__(plans, configuration, fold, dataset_json, device)
         self.mt_num_classes = int(os.environ.get('NNUNETV2_MT_NUM_CLS', '3'))
         self.mt_loss_weight = float(os.environ.get('NNUNETV2_MT_LOSS_WEIGHT', '0.3'))
-        self.pre_checkpoint_path = os.environ.get('NNUNETV2_PRE_CHECKPOINT_PATH', '/home/mengwei/Downloads/nnUNet_code/pretrain/checkpoint_best.pth')
+        # self.pre_checkpoint_path = os.environ.get('NNUNETV2_PRE_CHECKPOINT_PATH', 
+        # '/nfs/home/mwei/nnUNet_data/nnUNet_results/Dataset001_3DCT/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/checkpoint_best.pth')
         
         # Calculate proper class weights based on your training data
         self.cls_head = None
@@ -91,21 +230,32 @@ class nnUNetTrainer_CLSHeadSum(nnUNetTrainer):
         return cls_head
     
     def configure_optimizers_cls(self):
-        optimizer = torch.optim.SGD([
-            {'params': self.network.parameters(), 'lr': self.initial_lr},
-            {'params': self.cls_head.parameters(), 'lr': self.initial_lr * 10}  # Higher LR for head
-        ], lr=self.initial_lr, weight_decay=self.weight_decay, momentum=0.99, nesterov=True)
-        
+        #train from stage 1 checkpoint
+        # optimizer = torch.optim.SGD([
+        #     {'params': self.network.parameters(), 'lr': self.initial_lr},
+        #     {'params': self.cls_head.parameters(), 'lr': self.initial_lr * 10}  # Higher LR for head
+        # ], weight_decay=self.weight_decay, momentum=0.99, nesterov=True)
+
+        #train from scratch
+        optimizer = torch.optim.SGD(
+                list(self.network.parameters()) + list(self.cls_head.parameters()),
+                lr=self.initial_lr,
+                weight_decay=self.weight_decay,
+                momentum=0.99,
+                nesterov=True
+)
         lr_scheduler = PolyLRScheduler(optimizer, self.initial_lr, self.num_epochs)
         return optimizer, lr_scheduler
     
     def initialize(self):
         super().initialize()
         self.cls_head = self.build_cls_head()
-        weights_fn = torch.tensor([1.3548, 0.7925, 1.0], dtype=torch.float32).to(self.device)
-        self.cls_loss_fn = nn.CrossEntropyLoss(weight=weights_fn)
+        # weights_fn = torch.tensor([1.3548, 0.7925, 1.0], dtype=torch.float32).to(self.device)
+        # self.cls_loss_fn = nn.CrossEntropyLoss(weight=weights_fn)
+        self.cls_loss_fn = FocalLoss(alpha=1.0, gamma=2.0)
 
         self.initial_lr = 1e-3
+        self.num_epochs = 200
 
         self.optimizer, self.lr_scheduler = self.configure_optimizers_cls()
         #add for using checkpoint for stage 1 trained only for segmentation
@@ -183,7 +333,6 @@ class nnUNetTrainer_CLSHeadSum(nnUNetTrainer):
             dec_feature4 = decoder_features[3]
             dec_feature5 = decoder_features[4]
 
-    
             seg_loss = self._compute_segmentation_loss_only(seg_outputs, target)
             
             cls_loss = torch.tensor(0.0, device=self.device)
@@ -197,7 +346,8 @@ class nnUNetTrainer_CLSHeadSum(nnUNetTrainer):
                     dec_feature5)
                 cls_loss = self.cls_loss_fn(cls_logits, cls_target)
 
-            total_loss = 0.7 * seg_loss + 0.3 * cls_loss
+            total_loss = seg_loss + 0.3 * cls_loss
+            # total_loss = seg_loss + cls_loss
             # total_loss = 0.7 * seg_loss + self.mt_loss_weight * cls_loss
 
         if self.grad_scaler is not None:
@@ -285,7 +435,11 @@ class nnUNetTrainer_CLSHeadSum(nnUNetTrainer):
                 cls_loss = self.cls_loss_fn(cls_logits, cls_target)
 
             # total_loss = seg_loss + self.mt_loss_weight * cls_loss
-            total_loss = 0.7 * seg_loss + 0.3 * cls_loss
+            total_loss = seg_loss + 0.3 * cls_loss
+            # total_loss = seg_loss + cls_loss
+
+            pred_class = cls_logits.argmax(dim=1).detach().cpu().numpy()
+            true_class = cls_target.detach().cpu().numpy()
 
         # Compute segmentation metrics (pseudo dice) as in base class
         if self.enable_deep_supervision:
@@ -327,40 +481,98 @@ class nnUNetTrainer_CLSHeadSum(nnUNetTrainer):
             fn_hard = fn_hard[1:]
 
         out = {'loss': total_loss.detach().cpu().numpy(), 'tp_hard': tp_hard, 'fp_hard': fp_hard, 'fn_hard': fn_hard}
-        out['seg_loss'] = seg_loss.detach().cpu().numpy()
-        out['cls_loss'] = cls_loss.detach().cpu().numpy()
-        
-        # Calculate F1 score for classification if we have classification targets
-        if cls_target is not None and encoder_features is not None:
-            cls_pred = cls_logits.argmax(dim=1)
-            cls_pred_np = cls_pred.detach().cpu().numpy()
-            cls_target_np = cls_target.detach().cpu().numpy()
-            
-            # Calculate metrics
-            out['f1_macro'] = f1_score(cls_target_np, cls_pred_np, average='macro', zero_division=0)
-            # cm = confusion_matrix(cls_target_np, cls_pred_np)
-            
-            # # Log per-class accuracy
-            # for i in range(self.mt_num_classes):
-            #     out[f'cls_acc_{i}'] = (cm[i,i] / cm[i].sum()) if cm[i].sum() > 0 else 0
+        out['true_class'] = true_class
+        out['pred_class'] = pred_class
+
         return out
 
+    def on_validation_epoch_end(self, val_outputs: List[dict]):
+        outputs_collated = collate_outputs(val_outputs)
+
+        tp = np.sum(outputs_collated['tp_hard'], 0)
+        fp = np.sum(outputs_collated['fp_hard'], 0)
+        fn = np.sum(outputs_collated['fn_hard'], 0)
+
+        if self.is_ddp:
+            world_size = dist.get_world_size()
+
+            tps = [None for _ in range(world_size)]
+            dist.all_gather_object(tps, tp)
+            tp = np.vstack([i[None] for i in tps]).sum(0)
+
+            fps = [None for _ in range(world_size)]
+            dist.all_gather_object(fps, fp)
+            fp = np.vstack([i[None] for i in fps]).sum(0)
+
+            fns = [None for _ in range(world_size)]
+            dist.all_gather_object(fns, fn)
+            fn = np.vstack([i[None] for i in fns]).sum(0)
+
+            losses_val = [None for _ in range(world_size)]
+            dist.all_gather_object(losses_val, outputs_collated['loss'])
+            loss_here = np.vstack(losses_val).mean()
+        else:
+            loss_here = np.mean(outputs_collated['loss'])
+
+        global_dc_per_class = [i for i in [2 * i / (2 * i + j + k) for i, j, k in zip(tp, fp, fn)]]
+        mean_fg_dice = np.nanmean(global_dc_per_class)
+        self.logger.log('mean_fg_dice', mean_fg_dice, self.current_epoch)
+        self.logger.log('dice_per_class_or_region', global_dc_per_class, self.current_epoch)
+        self.logger.log('val_losses', loss_here, self.current_epoch)
+
+        all_true = np.asarray(outputs_collated['true_class']).reshape(-1)  # ensure shape (N,)
+        all_pred = np.asarray(outputs_collated['pred_class']).reshape(-1)  # ensure shape (N,)
+
+        acc = accuracy_score(all_true, all_pred)
+        f1 = f1_score(all_true, all_pred, average='macro')
+
+        self.logger.log('val_classification_acc', acc, self.current_epoch)
+        self.logger.log('val_classification_f1', f1, self.current_epoch)
+
+
+        loss_here = np.mean(outputs_collated['loss'])
+        self.logger.log('val_losses', loss_here, self.current_epoch)
+
     def on_epoch_end(self):
-        super().on_epoch_end()
+        self.logger.log('epoch_end_timestamps', time(), self.current_epoch)
+
+        self.print_to_log_file('train_loss', np.round(self.logger.my_fantastic_logging['train_losses'][-1], decimals=4))
+        self.print_to_log_file('val_loss', np.round(self.logger.my_fantastic_logging['val_losses'][-1], decimals=4))
+        self.print_to_log_file('Pseudo dice', [np.round(i, decimals=4) for i in
+                                               self.logger.my_fantastic_logging['dice_per_class_or_region'][-1]])
+        self.print_to_log_file('val_classification_acc', np.round(self.logger.my_fantastic_logging['val_classification_acc'][-1], decimals=4))
+        self.print_to_log_file('val_classification_f1', np.round(self.logger.my_fantastic_logging['val_classification_f1'][-1], decimals=4))
+        self.print_to_log_file(
+            f"Epoch time: {np.round(self.logger.my_fantastic_logging['epoch_end_timestamps'][-1] - self.logger.my_fantastic_logging['epoch_start_timestamps'][-1], decimals=2)} s")
+
+        # handling periodic checkpointing
+        current_epoch = self.current_epoch
+        if (current_epoch + 1) % self.save_every == 0 and current_epoch != (self.num_epochs - 1):
+            self.save_checkpoint(join(self.output_folder, 'checkpoint_latest.pth'))
         
-        # Only log if we're the main process (DDP) and have classification data
-        if self.local_rank == 0 and hasattr(self.logger, 'my_fantastic_logging'):
-            # Log classification metrics if they exist
-            if 'f1_macro' in self.logger.my_fantastic_logging:
-                last_f1 = self.logger.my_fantastic_logging['f1_macro'][-1]
-                self.print_to_log_file(f"Validation F1 Macro: {np.round(last_f1, decimals=4)}")
-                
-                # Log per-class accuracy if available
-                for i in range(self.mt_num_classes):
-                    acc_key = f'cls_acc_{i}'
-                    if acc_key in self.logger.my_fantastic_logging:
-                        last_acc = self.logger.my_fantastic_logging[acc_key][-1]
-                        self.print_to_log_file(f"Class {i} Accuracy: {np.round(last_acc * 100, decimals=2)}%")
+        # handle 'best' checkpointing. ema_fg_dice is computed by the logger and can be accessed like this
+        if self._best_ema is None or self.logger.my_fantastic_logging['ema_fg_dice'][-1] > self._best_ema:
+            self._best_ema = self.logger.my_fantastic_logging['ema_fg_dice'][-1]
+            self.print_to_log_file(f"Yayy! New best EMA pseudo Dice: {np.round(self._best_ema, decimals=4)}")
+            self.save_checkpoint(join(self.output_folder, 'checkpoint_best.pth'))
+
+        if not hasattr(self, "_best_cls_f1"):
+            self._best_cls_f1 = None
+
+        # handle best checkpointing for classification
+        current_f1 = self.logger.my_fantastic_logging['val_classification_f1'][-1]
+        # if (current_epoch + 1) % self.save_every == 0 and current_epoch != (self.num_epochs - 1):
+        if self._best_cls_f1 is None or current_f1 > self._best_cls_f1:
+            self._best_cls_f1 = current_f1
+            filename = f'checkpoint_cls_best.pth'
+            self.save_checkpoint(join(self.output_folder, filename))
+            self.print_to_log_file(f"new best macro F1: {np.round(current_f1, 4)}")
+
+        if self.local_rank == 0:
+            print("plotting progress png")
+            self.logger.plot_progress_png_wcls(self.output_folder)
+
+        self.current_epoch += 1
 
     def save_checkpoint(self, filename: str) -> None:
         if self.local_rank == 0:

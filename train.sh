@@ -35,11 +35,40 @@
 # nnUNetv2_train Dataset001_3DCT 3d_fullres 0 -tr nnUNetTrainer_CLSHead_Frozen -p nnUNetPlans --npz
 
 # train classification head with sum of all scales
+# echo "Starting nnU-Net v2 training..."
+# export nnUNet_raw="/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw"
+# export nnUNet_preprocessed="/nfs/home/mwei/nnUNet_3d_data/nnUNet_preprocessed"
+# export nnUNet_results="/nfs/home/mwei/nnUNet_3d_data/nnUNet_results_gd"
+# export NNUNETV2_MT_NUM_CLS=3 #your number of classes
+# export NNUNETV2_MT_LOSS_WEIGHT=1 #lambda for cls loss 
+# export NNUNETV2_PRE_CHECKPOINT_PATH="/nfs/home/mwei/nnUNet_data/nnUNet_results/Dataset001_3DCT/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/checkpoint_best.pth"
+# nnUNetv2_train Dataset001_3DCT 3d_fullres 0 -tr nnUNetTrainer_CLSHeadGD -p nnUNetPlans --npz
+
+# echo "Starting nnU-Net v2 training..."
+# export nnUNet_raw="/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw"
+# export nnUNet_preprocessed="/nfs/home/mwei/nnUNet_3d_data/nnUNet_preprocessed"
+# export nnUNet_results="/nfs/home/mwei/nnUNet_3d_data/nnUNet_results_sumOC_bs16"
+# export NNUNETV2_MT_NUM_CLS=3 #your number of classes
+# export NNUNETV2_MT_LOSS_WEIGHT=0.3 #lambda for cls loss 
+# export NNUNETV2_PRE_CHECKPOINT_PATH="/nfs/home/mwei/nnUNet_data/nnUNet_results/Dataset001_3DCT/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/checkpoint_best.pth"
+# nnUNetv2_train Dataset001_3DCT 3d_fullres 0 -tr nnUNetTrainer_CLSHeadSumOC -p nnUNetPlans --npz
+
 echo "Starting nnU-Net v2 training..."
 export nnUNet_raw="/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw"
 export nnUNet_preprocessed="/nfs/home/mwei/nnUNet_3d_data/nnUNet_preprocessed"
-export nnUNet_results="/nfs/home/mwei/nnUNet_3d_data/nnUNet_results_sum_maxpool_nopretrain"
+export nnUNet_results="/nfs/home/mwei/nnUNet_results/nnUNet_results_sum_headver7_bs8_focal_nopretrain"
 export NNUNETV2_MT_NUM_CLS=3 #your number of classes
-export NNUNETV2_MT_LOSS_WEIGHT=1 #lambda for cls loss 
+export NNUNETV2_MT_LOSS_WEIGHT=0.3 #lambda for cls loss 
 # export NNUNETV2_PRE_CHECKPOINT_PATH="/nfs/home/mwei/nnUNet_data/nnUNet_results/Dataset001_3DCT/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/checkpoint_best.pth"
 nnUNetv2_train Dataset001_3DCT 3d_fullres 0 -tr nnUNetTrainer_CLSHeadSum -p nnUNetPlans --npz
+
+
+## train classification head only with simple architecture from scratch
+# echo "Starting nnU-Net v2 training..."
+# export nnUNet_raw="/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw"
+# export nnUNet_preprocessed="/nfs/home/mwei/nnUNet_3d_data/nnUNet_preprocessed"
+# export nnUNet_results="/nfs/home/mwei/nnUNet_results/nnUNet_results_simpleVer2_bs12"
+# export NNUNETV2_MT_NUM_CLS=3 #your number of classes
+# export NNUNETV2_MT_LOSS_WEIGHT=1 #lambda for cls loss 
+# # export NNUNETV2_PRE_CHECKPOINT_PATH="/nfs/home/mwei/nnUNet_data/nnUNet_results/Dataset001_3DCT/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/checkpoint_best.pth"
+# nnUNetv2_train Dataset001_3DCT 3d_fullres 0 -tr nnUNetTrainer_CLSHeadSimple -p nnUNetPlans --npz

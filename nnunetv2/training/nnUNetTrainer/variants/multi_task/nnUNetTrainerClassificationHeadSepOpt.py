@@ -47,27 +47,6 @@ class nnUNetTrainer_CLSHeadSepOpt(nnUNetTrainer):
         
         print(f"Building classification head with {encoder_channels} input channels (encoder features)")
         
-        # self.cls_head = nn.Sequential(
-        #     nn.AdaptiveAvgPool3d(1),
-        #     nn.Flatten(),
-        #     nn.Dropout(p=0.3),
-        #     nn.Linear(encoder_channels, 256),
-        #     # nn.BatchNorm1d(256),
-        #     nn.ReLU(),
-        #     nn.Dropout(p=0.3),
-        #     nn.Linear(256, self.mt_num_classes)
-        # ).to(self.device) # for NB experiments
-
-        # self.cls_head = nn.Sequential(
-        #     nn.AdaptiveAvgPool3d(1),
-        #     nn.Flatten(),
-        #     # nn.Dropout(p=0.3),
-        #     nn.Linear(encoder_channels, 256),
-        #     # nn.BatchNorm1d(256),
-        #     nn.ReLU(),
-        #     # nn.Dropout(p=0.3),
-        #     nn.Linear(256, self.mt_num_classes)
-        # ).to(self.device) # for NBND experiments
 
         cls_head = nn.Sequential(
             nn.AdaptiveAvgPool3d(1),  

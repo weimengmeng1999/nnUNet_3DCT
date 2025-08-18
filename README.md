@@ -50,72 +50,8 @@ export NNUNETV2_MT_LOSS_WEIGHT=0.3 #lambda for cls loss
 export NNUNETV2_PRE_CHECKPOINT_PATH="/path/to/checkpoint_best.pth"
 nnUNetv2_train Dataset001_3DCT 3d_fullres 0 -tr nnUNetTrainer_CLSHeadSumFT -p nnUNetPlans --npz
 ```
-### Train 
 
-### Examples
-
-**Train segmentation + classification jointly**
-
-```bash
-export NNUNETV2_MT_NUM_CLS=3   # number of classes
-export NNUNETV2_MT_LOSS_WEIGHT=1   # λ for classification loss
-
-nnUNetv2_train Dataset001_3DCT 3d_fullres 0 \
-  -tr nnUNetTrainer_CLSHead -p nnUNetPlans --npz
-```
-
-**Train segmentation + classification with dropout**
-
-```bash
-export NNUNETV2_MT_NUM_CLS=3
-export NNUNETV2_MT_LOSS_WEIGHT=0.05
-
-nnUNetv2_train Dataset001_3DCT 3d_fullres 0 \
-  -tr nnUNetTrainer_CLSHeadDP -p nnUNetPlans --npz
-```
-
-**Train classification head only (frozen encoder)**
-
-```bash
-export NNUNETV2_MT_NUM_CLS=3
-export NNUNETV2_MT_LOSS_WEIGHT=1
-export NNUNETV2_PRE_CHECKPOINT_PATH="/path/to/checkpoint_best.pth"
-
-nnUNetv2_train Dataset001_3DCT 3d_fullres 0 \
-  -tr nnUNetTrainer_CLSHead_Frozen -p nnUNetPlans --npz
-```
-
-**Train classification head with sum of all scales**
-
-```bash
-export NNUNETV2_MT_NUM_CLS=3
-export NNUNETV2_MT_LOSS_WEIGHT=1
-export NNUNETV2_PRE_CHECKPOINT_PATH="/path/to/checkpoint_best.pth"
-
-nnUNetv2_train Dataset001_3DCT 3d_fullres 0 \
-  -tr nnUNetTrainer_CLSHeadGD -p nnUNetPlans --npz
-```
-
-**Train classification head with output channel sum (SumOC)**
-
-```bash
-export NNUNETV2_MT_NUM_CLS=3
-export NNUNETV2_MT_LOSS_WEIGHT=0.3
-export NNUNETV2_PRE_CHECKPOINT_PATH="/path/to/checkpoint_best.pth"
-
-nnUNetv2_train Dataset001_3DCT 3d_fullres 0 \
-  -tr nnUNetTrainer_CLSHeadSumOC -p nnUNetPlans --npz
-```
-
-**Train classification head with sum pooling (Sum Head v7)**
-
-```bash
-export NNUNETV2_MT_NUM_CLS=3
-export NNUNETV2_MT_LOSS_WEIGHT=0.3
-
-nnUNetv2_train Dataset001_3DCT 3d_fullres 0 \
-  -tr nnUNetTrainer_CLSHeadSum -p nnUNetPlans --npz
-```
+### Train Varient Classification Head
 
 **Train classification head only with simple architecture (from scratch)**
 

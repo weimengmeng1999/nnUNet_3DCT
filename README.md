@@ -186,9 +186,9 @@ Lesion classification performance across subtypes on validation set is:
 | **Weighted Avg** | 0.56 | 0.57          | 0.56       |
 
 
-The segmentation performance for multi-class can be found in **[pancreas/lesion segmentation report](stage2_output/summary.json)**.
+Segmentation performance for multi-class can be found in **[pancreas/lesion segmentation report](stage2_output/summary.json)**.
 
-The segmentation performance for whole pancreas can be found in **[whole pancreas segmentation report](stage2_output/whole_pancreas_summary.json)**.
+Segmentation performance for whole pancreas can be found in **[whole pancreas segmentation report](stage2_output/whole_pancreas_summary.json)**.
 
 The segmentation performance on validation set is:
 
@@ -200,10 +200,10 @@ The segmentation performance on validation set is:
 | Whole Pancreas (label > 0)       | 0.97        |
 
 
-The segmentation visualization is as below.
+Segmentation visualization is as below.
 ![Model Architecture](figures/cvis.svg)
 
-The inference time improvements are:
+Inference time improvements are:
 
 | **Inference Time** | **Before (s)** | **After (s)** |
 |--------------------|----------------|---------------|

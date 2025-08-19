@@ -40,9 +40,12 @@ from nnunetv2.preprocessing.preprocessors.default_preprocessor import DefaultPre
 from nnunetv2.utilities.plans_handling.plans_handler import PlansManager, ConfigurationManager
 
 import torch.nn.functional as F
+import csv
+
+from nnunetv2.inference.sliding_window_prediction import compute_gaussian
+from nnunetv2.utilities.helpers import empty_cache
 
 
-#ver1
 # class Classifier3D(nn.Module):
 #     """3D Classifier for multi-scale nnUNet features"""
 #     def __init__(self, num_classes, encoder_channels=[320, 320, 256, 128, 64, 32]):
@@ -58,127 +61,9 @@ import torch.nn.functional as F
 #             pooled = self.avgpool(feat).flatten(1)
 #             outputs.append(fc(pooled))
 #         return sum(outputs)  # sum logits from all scales
-
-#ver2
-#alternative version of classifier head with max pooling and linear layer for concatenation of all scales features
-# class Classifier3D(nn.Module):
-#     """3D Classifier for multi-scale nnUNet features"""
-#     def __init__(self, num_classes, encoder_channels=[320, 320, 256, 128, 64, 32]):
-#         super().__init__()
-#         self.pool = nn.AdaptiveMaxPool3d(1)  # global max pooling
-#         self.fc_layers = nn.ModuleList([
-#             nn.Linear(ch, num_classes) for ch in encoder_channels
-#         ])
-#         self.final_fc = nn.Linear(num_classes * len(encoder_channels), num_classes)
-
-#     def forward(self, *features):
-#         logits_list = []
-#         for feat, fc in zip(features, self.fc_layers):
-#             pooled = self.pool(feat).flatten(1)
-#             logits_list.append(fc(pooled))  # per-scale logits
-
-#         concat_logits = torch.cat(logits_list, dim=1)
-#         return self.final_fc(concat_logits)
-
-#ver3
-#alternative version of classifier head with max pooling and avg pooling and linear layer for concatenation of all scales features
-# class Classifier3D(nn.Module):
-#     """3D Classifier for multi-scale nnUNet features with GAP + GMP pooling"""
-#     def __init__(self, num_classes, encoder_channels=[320, 320, 256, 128, 64, 32]):
-#         super().__init__()
-#         # input dimension doubles because we concat GAP + GMP
-#         self.fc_layers = nn.ModuleList([
-#             nn.Linear(ch * 2, num_classes) for ch in encoder_channels
-#         ])
-#         self.final_fc = nn.Linear(num_classes * len(encoder_channels), num_classes)
-
-#     def forward(self, *features):
-#         logits_list = []
-#         for feat, fc in zip(features, self.fc_layers):
-#             avg_pooled = F.adaptive_avg_pool3d(feat, 1).flatten(1)
-#             max_pooled = F.adaptive_max_pool3d(feat, 1).flatten(1)
-#             pooled = torch.cat([avg_pooled, max_pooled], dim=1)
-#             logits_list.append(fc(pooled))  # per-scale logits
-
-#         concat_logits = torch.cat(logits_list, dim=1)
-#         return self.final_fc(concat_logits)
-
-#ver4
-#ver 3 with dropout
-# class Classifier3D(nn.Module):
-#     """3D Classifier for multi-scale nnUNet features with GAP + GMP pooling"""
-#     def __init__(self, num_classes, encoder_channels=[320, 320, 256, 128, 64, 32]):
-#         super().__init__()
-#         # input dimension doubles because we concat GAP + GMP
-#         self.fc_layers = nn.ModuleList([
-#             nn.Linear(ch * 2, num_classes) for ch in encoder_channels
-#         ])
-#         self.dropout = nn.Dropout(p=0.3)
-#         self.final_fc = nn.Linear(num_classes * len(encoder_channels), num_classes)
-
-#     def forward(self, *features):
-#         logits_list = []
-#         for feat, fc in zip(features, self.fc_layers):
-#             avg_pooled = F.adaptive_avg_pool3d(feat, 1).flatten(1)
-#             max_pooled = F.adaptive_max_pool3d(feat, 1).flatten(1)
-#             pooled = torch.cat([avg_pooled, max_pooled], dim=1)
-#             logits_list.append(fc(pooled))  # per-scale logits
-
-#         concat_logits = torch.cat(logits_list, dim=1)
-#         concat_logits = self.dropout(concat_logits)
-#         return self.final_fc(concat_logits)
-
-#ver5 
-# class Classifier3D(nn.Module):
-#     """3D Classifier for multi-scale nnUNet features with GMP pooling + per-scale MLP"""
-#     def __init__(self, num_classes, encoder_channels=[320, 320, 256, 128, 64, 32], hidden_dim=128):
-#         super().__init__()
-#         # Per-scale MLPs: input = ch (GMP only), hidden = hidden_dim, output = num_classes
-#         self.mlp_layers = nn.ModuleList([
-#             nn.Sequential(
-#                 nn.Linear(ch, ch // 2),
-#                 nn.ReLU(),
-#                 nn.Linear(ch // 2, num_classes)
-#             ) for ch in encoder_channels
-#         ])
-#         # Final FC combines all per-scale logits
-#         self.final_fc = nn.Linear(num_classes * len(encoder_channels), num_classes)
-
-#     def forward(self, *features):
-#         logits_list = []
-#         for feat, mlp in zip(features, self.mlp_layers):
-#             max_pooled = F.adaptive_max_pool3d(feat, 1).flatten(1)  # GMP only
-#             logits_list.append(mlp(max_pooled))  # per-scale logits via MLP
-
-#         concat_logits = torch.cat(logits_list, dim=1)
-#         return self.final_fc(concat_logits)
-
-#ver6
-# class Classifier3D(nn.Module):
-#     """3D Classifier for multi-scale nnUNet features"""
-#     def __init__(self, num_classes, encoder_channels=[320, 320, 256, 128, 64, 32]):
-#         super().__init__()
-#         self.avgpool = nn.AdaptiveAvgPool3d(1)
-#         # self.fc_layers = nn.ModuleList([
-#         #     nn.Linear(ch, num_classes) for ch in encoder_channels
-#         # ])
-#         self.fc_layers = nn.ModuleList([
-#             nn.Sequential(
-#                 nn.Linear(ch, ch // 2),
-#                 nn.ReLU(),
-#                 nn.Linear(ch // 2, num_classes)
-#             ) for ch in encoder_channels
-#         ])
-    # def forward(self, *features):
-    #     outputs = []
-    #     for feat, fc in zip(features, self.fc_layers):
-    #         pooled = self.avgpool(feat).flatten(1)
-    #         outputs.append(fc(pooled))
-    #     return sum(outputs)  # sum logits from all scales
-
 #ver7
 class Classifier3D(nn.Module):
-    """3D Classifier for multi-scale nnUNet features with grid pooling + per-scale MLP"""
+    """3D Classifier for multi-scale nnUNet features with Mask-guided ROI pooling + per-scale MLP"""
     def __init__(self, num_classes, encoder_channels=[320, 320, 256, 128, 64, 32], hidden_dim=128, grid_size=(4,4,4)):
         super().__init__()
         self.grid_size = grid_size  # adaptive pooling grid
@@ -193,13 +78,18 @@ class Classifier3D(nn.Module):
         # Final FC combines all per-scale logits
         self.final_fc = nn.Linear(num_classes * len(encoder_channels), num_classes)
 
-    def forward(self, *features):
+    def forward(self, *features, masks=None):
         """
         features: list of encoder features at multiple scales (B x C x D x H x W)
         masks: segmentation masks (B x 1 x D x H x W), optional
         """
         logits_list = []
         for feat, mlp in zip(features, self.mlp_layers):
+            if masks is not None:
+                # Resize mask to feature spatial size
+                mask_resized = F.interpolate(masks.float(), size=feat.shape[2:], mode='trilinear', align_corners=False)
+                feat = feat * mask_resized  # apply mask
+
             # Adaptive ROI pooling to small 3D grid
             pooled = F.adaptive_max_pool3d(feat, output_size=self.grid_size)
             pooled = pooled.view(feat.shape[0], -1)  # flatten to B x (C*grid_volume)
@@ -209,267 +99,7 @@ class Classifier3D(nn.Module):
         concat_logits = torch.cat(logits_list, dim=1)
         return self.final_fc(concat_logits)
 
-#ver8
-# class Classifier3D(nn.Module):
-#     """3D Classifier for multi-scale nnUNet features with small 3D pooled grid per scale"""
-#     def __init__(self, num_classes, encoder_channels=[320, 320, 256, 128, 64, 32], grid_size=(4, 4, 4)):
-#         super().__init__()
-#         self.grid_size = grid_size  # adaptive pooling grid
-        
-#         # Per-scale MLPs: input = ch * grid_volume, hidden = ch//2, output = num_classes
-#         self.fc_layers = nn.ModuleList([
-#             nn.Sequential(
-#                 nn.Linear(ch * grid_size[0] * grid_size[1] * grid_size[2], ch // 2),
-#                 nn.ReLU(),
-#                 nn.Linear(ch // 2, num_classes)
-#             ) for ch in encoder_channels
-#         ])
-
-#     def forward(self, *features):
-#         logits_list = []
-#         for feat, fc in zip(features, self.fc_layers):
-#             # Adaptive 3D pooling to small grid
-#             pooled = F.adaptive_max_pool3d(feat, output_size=self.grid_size)
-#             pooled = pooled.view(feat.shape[0], -1)  # flatten: B x (C*grid_volume)
-            
-#             logits_list.append(fc(pooled))  # per-scale logits
-
-#         return sum(logits_list)  # sum logits from all scales
-
-#ver9
-# class Classifier3D(nn.Module):
-#     """
-#     3D Classifier for multi-scale nnUNet features
-#     Mask-guided ROI pooling + grid pooling + per-scale self-attention + MLP
-#     """
-#     def __init__(
-#         self,
-#         num_classes,
-#         encoder_channels=[320, 320, 256, 128, 64, 32],
-#         hidden_dim=128,
-#         grid_size=(4, 4, 4),
-#         attn_heads=4,
-#         attn_dim=128
-#     ):
-#         super().__init__()
-#         self.grid_size = grid_size
-#         self.num_classes = num_classes
-
-#         self.proj_layers = nn.ModuleList()
-#         self.attn_layers = nn.ModuleList()
-#         self.mlp_layers = nn.ModuleList()
-
-#         for ch in encoder_channels:
-#             # Input dimension after flattening pooled grid
-#             pooled_dim = ch * grid_size[0] * grid_size[1] * grid_size[2]
-
-#             # Linear projection to attention embedding
-#             self.proj_layers.append(nn.Linear(ch, attn_dim))
-
-#             # Multi-head attention
-#             self.attn_layers.append(nn.MultiheadAttention(embed_dim=attn_dim, num_heads=attn_heads, batch_first=True))
-
-#             # Per-scale MLP
-#             self.mlp_layers.append(
-#                 nn.Sequential(
-#                     nn.Linear(attn_dim, hidden_dim),
-#                     nn.ReLU(),
-#                     nn.Linear(hidden_dim, num_classes)
-#                 )
-#             )
-
-#         # Final FC to combine per-scale logits
-#         self.final_fc = nn.Linear(num_classes * len(encoder_channels), num_classes)
-
-#     def forward(self, *features):
-#         """
-#         features: list of encoder features at multiple scales (B x C x D x H x W)
-#         masks: optional segmentation masks (B x 1 x D x H x W)
-#         """
-#         logits_list = []
-
-#         for i, (feat, proj, attn, mlp) in enumerate(zip(features, self.proj_layers, self.attn_layers, self.mlp_layers)):
-#             B, C, D, H, W = feat.shape
-
-#             # Adaptive grid pooling
-#             pooled = F.adaptive_max_pool3d(feat, output_size=self.grid_size)  # B x C x d x h x w
-#             B, C, d, h, w = pooled.shape
-
-#             # Flatten spatial positions: B x L x C
-#             pooled_flat = pooled.view(B, C, -1).transpose(1, 2)  # B x L x C
-
-#             # Linear projection per position
-#             pooled_attn = proj(pooled_flat)  # B x L x attn_dim
-
-#             # Self-attention over spatial positions
-#             attn_out, _ = attn(pooled_attn, pooled_attn, pooled_attn)  # B x L x attn_dim
-#             attn_out = attn_out.mean(dim=1)  # B x attn_dim
-
-#             # Per-scale MLP
-#             logits_list.append(mlp(attn_out))  # B x num_classes
-
-#         # Concatenate per-scale logits and final FC
-#         concat_logits = torch.cat(logits_list, dim=1)
-#         return self.final_fc(concat_logits)
-
-#ver10 
-# class Classifier3D(nn.Module):
-#     """
-#     3D Classifier for multi-scale nnUNet features
-#     Mask-guided ROI pooling + grid pooling + per-scale self-attention + MLP
-#     """
-#     def __init__(
-#         self,
-#         num_classes,
-#         encoder_channels=[320, 320, 256, 128, 64, 32],
-#         hidden_dim=128,
-#         grid_size=(4, 4, 4),
-#         attn_heads=4,
-#         attn_dim=128
-#     ):
-#         super().__init__()
-#         self.grid_size = grid_size
-#         self.num_classes = num_classes
-
-#         self.proj_layers = nn.ModuleList()
-#         self.attn_layers = nn.ModuleList()
-#         self.mlp_layers = nn.ModuleList()
-
-#         for ch in encoder_channels:
-#             # Input dimension after flattening pooled grid
-#             pooled_dim = ch * grid_size[0] * grid_size[1] * grid_size[2]
-
-#             # Linear projection to attention embedding
-#             self.proj_layers.append(nn.Linear(ch, attn_dim))
-
-#             # Multi-head attention
-#             self.attn_layers.append(nn.MultiheadAttention(embed_dim=attn_dim, num_heads=attn_heads, batch_first=True))
-
-#             # Per-scale MLP
-#             self.mlp_layers.append(
-#                 nn.Sequential(
-#                     nn.Linear(attn_dim, hidden_dim),
-#                     nn.ReLU(),
-#                     nn.Linear(hidden_dim, num_classes)
-#                 )
-#             )
-
-#         # Final FC to combine per-scale logits
-#         self.final_fc = nn.Linear(num_classes * len(encoder_channels), num_classes)
-
-#     def forward(self, *features, masks=None):
-#         """
-#         features: list of encoder features at multiple scales (B x C x D x H x W)
-#         masks: optional segmentation masks (B x 1 x D x H x W)
-#         """
-#         logits_list = []
-
-#         for i, (feat, proj, attn, mlp) in enumerate(zip(features, self.proj_layers, self.attn_layers, self.mlp_layers)):
-#             B, C, D, H, W = feat.shape
-
-#             # Apply mask if provided
-#             if masks is not None:
-#                 mask_resized = F.interpolate(masks.float(), size=(D, H, W), mode='trilinear', align_corners=False)
-#                 feat = feat * mask_resized
-
-#             # Adaptive grid pooling
-#             pooled = F.adaptive_max_pool3d(feat, output_size=self.grid_size)  # B x C x d x h x w
-#             B, C, d, h, w = pooled.shape
-
-#             # Flatten spatial positions: B x L x C
-#             pooled_flat = pooled.view(B, C, -1).transpose(1, 2)  # B x L x C
-
-#             # Linear projection per position
-#             pooled_attn = proj(pooled_flat)  # B x L x attn_dim
-
-#             # Self-attention over spatial positions
-#             attn_out, _ = attn(pooled_attn, pooled_attn, pooled_attn)  # B x L x attn_dim
-#             attn_out = attn_out.mean(dim=1)  # B x attn_dim
-
-#             # Per-scale MLP
-#             logits_list.append(mlp(attn_out))  # B x num_classes
-
-#         # Concatenate per-scale logits and final FC
-#         concat_logits = torch.cat(logits_list, dim=1)
-#         return self.final_fc(concat_logits)
-
-#ver11
-# class Classifier3D(nn.Module):
-#     """3D Classifier for multi-scale nnUNet features with Mask-guided ROI pooling + per-scale MLP"""
-#     def __init__(self, num_classes, encoder_channels=[320, 320, 256, 128, 64, 32], hidden_dim=128, grid_size=(4,4,4)):
-#         super().__init__()
-#         self.grid_size = grid_size  # adaptive pooling grid
-#         # Per-scale MLPs: input = ch * grid_volume, hidden = ch//2, output = num_classes
-#         self.mlp_layers = nn.ModuleList([
-#             nn.Sequential(
-#                 nn.Linear(ch * grid_size[0] * grid_size[1] * grid_size[2], ch // 2),
-#                 nn.ReLU(),
-#                 nn.Linear(ch // 2, num_classes)
-#             ) for ch in encoder_channels
-#         ])
-#         # Final FC combines all per-scale logits
-#         self.final_fc = nn.Linear(num_classes * len(encoder_channels), num_classes)
-
-#     def forward(self, *features, masks=None):
-#         """
-#         features: list of encoder features at multiple scales (B x C x D x H x W)
-#         masks: segmentation masks (B x 1 x D x H x W), optional
-#         """
-#         logits_list = []
-#         for feat, mlp in zip(features, self.mlp_layers):
-#             if masks is not None:
-#                 # Resize mask to feature spatial size
-#                 mask_resized = F.interpolate(masks.float(), size=feat.shape[2:], mode='trilinear', align_corners=False)
-#                 feat = feat * mask_resized  # apply mask
-
-#             # Adaptive ROI pooling to small 3D grid
-#             pooled = F.adaptive_max_pool3d(feat, output_size=self.grid_size)
-#             pooled = pooled.view(feat.shape[0], -1)  # flatten to B x (C*grid_volume)
-
-#             logits_list.append(mlp(pooled))  # per-scale logits
-
-#         concat_logits = torch.cat(logits_list, dim=1)
-#         return self.final_fc(concat_logits)
-
-#ver13: VER7 with mask pooling
-
-# class Classifier3D(nn.Module):
-#     """3D Classifier for multi-scale nnUNet features with lesion-only mask-guided pooling + per-scale MLP"""
-#     def __init__(self, num_classes, encoder_channels=[320, 256, 128, 64, 32], grid_size=(4,4,4)):
-#         super().__init__()
-#         self.grid_size = grid_size
-#         self.mlp_layers = nn.ModuleList([
-#             nn.Sequential(
-#                 nn.Linear(ch * grid_size[0] * grid_size[1] * grid_size[2], ch // 2),
-#                 nn.ReLU(),
-#                 nn.Linear(ch // 2, num_classes)
-#             ) for ch in encoder_channels
-#         ])
-#         self.final_fc = nn.Linear(num_classes * len(encoder_channels), num_classes)
-
-#     def forward(self, *features, masks=None):
-#         """
-#         features: list of encoder features at multiple scales (B x C x D x H x W)
-#         masks: list of deep supervision masks, same number of scales as features
-#                each mask: (B x 1 x D x H x W)
-#         """
-#         logits_list = []
-#         for i, (feat, mlp) in enumerate(zip(features, self.mlp_layers)):
-#             if masks is not None:
-#                 # use corresponding scale mask
-#                 mask_scale = masks[-(i+1)].float()  # B x 1 x D x H x W
-#                 mask_lesion = (mask_scale > 0).float()
-#                 feat = feat * mask_lesion
-
-#             # Adaptive pooling to grid
-#             pooled = F.adaptive_max_pool3d(feat, output_size=self.grid_size)
-#             pooled = pooled.view(feat.shape[0], -1)
-#             logits_list.append(mlp(pooled))
-
-#         concat_logits = torch.cat(logits_list, dim=1)
-#         return self.final_fc(concat_logits)
-
-#ver12 without mask pooling
+#ver12
 # class Classifier3D(nn.Module):
 #     """
 #     3D Classifier for multi-scale nnUNet features
@@ -757,26 +387,28 @@ class nnUNetPredictorWithClassification(nnUNetPredictor):
         bottleneck_feature = encoder_features[-1]
         y = bottleneck_feature
         for i, stage in enumerate(self.network.decoder.stages):
-
             y = self.network.decoder.transpconvs[i](y)
             y = torch.cat((y, encoder_features[-(i+2)]), 1) #NOTE??
             y = stage(y)
+
             decoder_features.append(y)
 
         # Get some decoder features
-        dec_feature1 = decoder_features[0]
-        dec_feature2 = decoder_features[1]  # e.g., final stage before output  
-        dec_feature3 = decoder_features[2]
-        dec_feature4 = decoder_features[3]
-        dec_feature5 = decoder_features[4]
-
-        cls_logits = self.cls_head(
-            bottleneck_feature,
-            dec_feature1,
-            dec_feature2,
-            dec_feature3,
-            dec_feature4,
-            dec_feature5)
+        # dec_feature1 = decoder_features[0]
+        # dec_feature2 = decoder_features[1]  # e.g., final stage before output  
+        # dec_feature3 = decoder_features[2]
+        # dec_feature4 = decoder_features[3]
+        # dec_feature5 = decoder_features[4]
+        cls_logits = self.cls_head(bottleneck_feature, *decoder_features)
+        # for ver 12
+        # cls_logits = self.cls_head(*decoder_features)
+        # cls_logits = self.cls_head(
+        #     bottleneck_feature,
+        #     dec_feature1,
+        #     dec_feature2,
+        #     dec_feature3,
+        #     dec_feature4,
+        #     dec_feature5)
 
         
         # For TTA, only augment predictions, keep original features
@@ -1056,7 +688,11 @@ class nnUNetPredictorWithClassification(nnUNetPredictor):
             seg_from_prev_stage_files = [None] * len(list_of_lists_or_source_folder)
 
         ret = []
-        for case_idx, (li, of, sps) in enumerate(zip(list_of_lists_or_source_folder, output_filename_truncated, seg_from_prev_stage_files)):
+        csv_results = []
+
+        for case_idx, (li, of, sps) in enumerate(zip(list_of_lists_or_source_folder,
+                                                    output_filename_truncated,
+                                                    seg_from_prev_stage_files)):
             print(f"\n=== Processing case {case_idx + 1}/{len(list_of_lists_or_source_folder)}: {os.path.basename(of) if of else 'Unknown'} ===")
             
             # Preprocess
@@ -1077,20 +713,21 @@ class nnUNetPredictorWithClassification(nnUNetPredictor):
             )
 
             case_name = os.path.basename(of) if of else f"case_{case_idx}"
+
             print(f"Case: {case_name}")
 
             # Handle batch dimension
             if cls_logits.ndim > 1:
                 cls_logits = cls_logits.squeeze(0)
-            
+
             # Single label classification
             probs = torch.softmax(cls_logits, dim=0).tolist()
             pred_label = int(torch.argmax(cls_logits).item())
-            
+
             print(f"  Classification logits: {[f'{x:.4f}' for x in cls_logits.tolist()]}")
             print(f"  Classification probs: {[f'{x:.4f}' for x in probs]}")
             print(f"  Predicted class: {pred_label}")
-            
+
             cls_results = {
                 "logits": [float(x) for x in cls_logits.tolist()],
                 "probs": probs,
@@ -1098,7 +735,9 @@ class nnUNetPredictorWithClassification(nnUNetPredictor):
                 "num_classes": self.mt_num_classes
             }
 
+            csv_results.append([case_name + ".nii.gz", pred_label])
 
+            ret.append(cls_results)
 
             # Export segmentation
             if of is not None:
@@ -1119,12 +758,14 @@ class nnUNetPredictorWithClassification(nnUNetPredictor):
             
             print("-" * 50)
 
-        from nnunetv2.inference.sliding_window_prediction import compute_gaussian
-        from nnunetv2.utilities.helpers import empty_cache
+        with open(join(output_folder, 'subtype_results.csv'), "w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(["Names", "Subtype"])  # header
+            writer.writerows(csv_results)
+
         compute_gaussian.cache_clear()
         empty_cache(self.device)
         return ret
-
 
 def predict_entry_point_with_classification():
     """
@@ -1137,13 +778,13 @@ def predict_entry_point_with_classification():
     parser = argparse.ArgumentParser(
         description="Extended nnU-Net prediction with classification support using encoder features"
     )
-    parser.add_argument('-i', type=str, required=False, default= "/home/mengwei/Downloads/nnUNet_code/data/nnUNet_raw/Dataset001_3DCT/imagesTr",
+    parser.add_argument('-i', type=str, required=False, default= "/home/mengwei/Downloads/pancreas-segmentation-classification/data_ver2/nnUNet_raw/Dataset001_3DCT/imagesTs",
                        help='input folder. Remember to use the correct channel numberings for your files (_0000 etc). '
                              'File endings must be the same as the training dataset!')
-    parser.add_argument('-o', type=str, required=False, default = "/home/mengwei/Downloads/nnUNet_code/data/nnUNet_results_sum_lr1e-3/segVal_fast",
+    parser.add_argument('-o', type=str, required=False, default = "/home/mengwei/Downloads/nnUNet_code/pretrain/test_re",
                        help='Output folder. If it does not exist it will be created. Predicted segmentations will '
                              'have the same name as their source images.')
-    parser.add_argument('-co', '--cls_output_folder', type=str, default="/home/mengwei/Downloads/nnUNet_code/data/nnUNet_results_sum_lr1e-3/segVal_fast",
+    parser.add_argument('-co', '--cls_output_folder', type=str, default="/home/mengwei/Downloads/nnUNet_code/pretrain/test_re",
                        help='Output folder for classification JSONs (default: output_folder/classification)')
     parser.add_argument('-d', type=str, required=False, default="Dataset001_3DCT",
                        help='Dataset with which you would like to predict. You can specify either dataset name or id')
@@ -1165,7 +806,7 @@ def predict_entry_point_with_classification():
                        help='Set this to export predicted class "probabilities"')
     parser.add_argument('--continue_prediction', action='store_true',
                        help='Continue an aborted previous prediction (will not overwrite existing files)')
-    parser.add_argument('-chk', type=str, required=False, default='checkpoint_best.pth',
+    parser.add_argument('-chk', type=str, required=False, default='checkpoint_cls_best.pth',
                        help='Name of the checkpoint you want to use. Default: checkpoint_final.pth')
     parser.add_argument('-prev_stage_predictions', type=str, required=False, default=None,
                        help='Folder containing the predictions of the previous stage. Required for cascaded models.')

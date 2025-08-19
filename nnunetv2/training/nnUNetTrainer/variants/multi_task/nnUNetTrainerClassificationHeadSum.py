@@ -674,7 +674,7 @@ class nnUNetTrainer_CLSHeadSum(nnUNetTrainer):
             seg_loss = self._compute_segmentation_loss_only(seg_outputs, target)
             
             cls_loss = torch.tensor(0.0, device=self.device)
-            cls_logits = self.cls_head(*decoder_features)
+            cls_logits = self.cls_head(bottleneck_feature, *decoder_features)
             #with mask guided pooling
             # cls_logits = self.cls_head(*decoder_features, masks=target)
             cls_loss = self.cls_loss_fn(cls_logits, cls_target)
@@ -748,7 +748,7 @@ class nnUNetTrainer_CLSHeadSum(nnUNetTrainer):
             seg_loss = self._compute_segmentation_loss_only(seg_outputs, target)
 
             cls_loss = torch.tensor(0.0, device=self.device)
-            cls_logits = self.cls_head(*decoder_features)
+            cls_logits = self.cls_head(bottleneck_feature, *decoder_features)
             # with mask guided pooling
             # cls_logits = self.cls_head(*decoder_features, masks=target)
             cls_loss = self.cls_loss_fn(cls_logits, cls_target)

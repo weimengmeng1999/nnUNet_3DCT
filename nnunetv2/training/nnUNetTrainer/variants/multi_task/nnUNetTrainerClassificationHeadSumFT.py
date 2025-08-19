@@ -231,19 +231,19 @@ class nnUNetTrainer_CLSHeadSumFT(nnUNetTrainer):
     
     def configure_optimizers_cls(self):
         #train from stage 1 checkpoint
-        # optimizer = torch.optim.SGD([
-        #     {'params': self.network.parameters(), 'lr': self.initial_lr},
-        #     {'params': self.cls_head.parameters(), 'lr': self.initial_lr * 10}  # Higher LR for head
-        # ], weight_decay=self.weight_decay, momentum=0.99, nesterov=True)
+        optimizer = torch.optim.SGD([
+            {'params': self.network.parameters(), 'lr': self.initial_lr},
+            {'params': self.cls_head.parameters(), 'lr': self.initial_lr * 10}  # Higher LR for head
+        ], weight_decay=self.weight_decay, momentum=0.99, nesterov=True)
 
         #train from scratch
-        optimizer = torch.optim.SGD(
-                list(self.network.parameters()) + list(self.cls_head.parameters()),
-                lr=self.initial_lr,
-                weight_decay=self.weight_decay,
-                momentum=0.99,
-                nesterov=True
-)
+#         optimizer = torch.optim.SGD(
+#                 list(self.network.parameters()) + list(self.cls_head.parameters()),
+#                 lr=self.initial_lr,
+#                 weight_decay=self.weight_decay,
+#                 momentum=0.99,
+#                 nesterov=True
+# )
         lr_scheduler = PolyLRScheduler(optimizer, self.initial_lr, self.num_epochs)
         return optimizer, lr_scheduler
     

@@ -67,7 +67,7 @@ Fin-tune the classification head and original nnUNet network (encoder + segmenta
 export NNUNETV2_MT_NUM_CLS=3 #your number of classes
 export NNUNETV2_MT_LOSS_WEIGHT=0.3 #lambda for cls loss 
 #IMPORTANT: load the pre-trained weights from stage 1 
-export NNUNETV2_PRE_CHECKPOINT_PATH="/path/to/checkpoint_best.pth" 
+export NNUNETV2_PRE_CHECKPOINT_PATH="/path/to/checkpoint_best_stage1.pth" 
 nnUNetv2_train Dataset001_3DCT 3d_fullres 0 -tr nnUNetTrainer_CLSHeadSumFT -p nnUNetPlans --npz
 ```
 

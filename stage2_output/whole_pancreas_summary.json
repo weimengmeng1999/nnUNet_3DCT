@@ -1,0 +1,602 @@
+{
+    "foreground_mean": {
+        "Dice": 0.969261242450443,
+        "FN": 3016.5555555555557,
+        "FP": 2613.3055555555557,
+        "IoU": 0.9408013950743636,
+        "TN": 1648794.3055555555,
+        "TP": 97262.47222222222,
+        "n_pred": 99875.77777777778,
+        "n_ref": 100279.02777777778
+    },
+    "mean": {
+        "whole_pancreas": {
+            "Dice": 0.969261242450443,
+            "FN": 3016.5555555555557,
+            "FP": 2613.3055555555557,
+            "IoU": 0.9408013950743636,
+            "TN": 1648794.3055555555,
+            "TP": 97262.47222222222,
+            "n_pred": 99875.77777777778,
+            "n_ref": 100279.02777777778
+        }
+    },
+    "metric_per_case": [
+        {
+            "metrics": {
+                "whole_pancreas": {
+                    "Dice": 0.9743939659089267,
+                    "FN": 8873,
+                    "FP": 7076,
+                    "IoU": 0.9500665299541334,
+                    "TN": 4411694,
+                    "TP": 303456,
+                    "n_pred": 310532,
+                    "n_ref": 312329
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_3d_data/segreVal_wocls/case_0252.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0252.nii.gz"
+        },
+        {
+            "metrics": {
+                "whole_pancreas": {
+                    "Dice": 0.9369909110922414,
+                    "FN": 6003,
+                    "FP": 2011,
+                    "IoU": 0.8814514578186713,
+                    "TN": 2385295,
+                    "TP": 59587,
+                    "n_pred": 61598,
+                    "n_ref": 65590
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_3d_data/segreVal_wocls/case_0253.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0253.nii.gz"
+        },
+        {
+            "metrics": {
+                "whole_pancreas": {
+                    "Dice": 0.9734884182332225,
+                    "FN": 819,
+                    "FP": 1319,
+                    "IoU": 0.948346258848542,
+                    "TN": 524489,
+                    "TP": 39253,
+                    "n_pred": 40572,
+                    "n_ref": 40072
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_3d_data/segreVal_wocls/case_0254.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0254.nii.gz"
+        },
+        {
+            "metrics": {
+                "whole_pancreas": {
+                    "Dice": 0.9837436442662054,
+                    "FN": 1766,
+                    "FP": 1185,
+                    "IoU": 0.9680073720728535,
+                    "TN": 894210,
+                    "TP": 89289,
+                    "n_pred": 90474,
+                    "n_ref": 91055
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_3d_data/segreVal_wocls/case_0255.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0255.nii.gz"
+        },
+        {
+            "metrics": {
+                "whole_pancreas": {
+                    "Dice": 0.9798760633061564,
+                    "FN": 2953,
+                    "FP": 3425,
+                    "IoU": 0.9605460945087438,
+                    "TN": 3001685,
+                    "TP": 155279,
+                    "n_pred": 158704,
+                    "n_ref": 158232
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_3d_data/segreVal_wocls/case_0256.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0256.nii.gz"
+        },
+        {
+            "metrics": {
+                "whole_pancreas": {
+                    "Dice": 0.9788307685756413,
+                    "FN": 1979,
+                    "FP": 1998,
+                    "IoU": 0.9585392297908718,
+                    "TN": 995805,
+                    "TP": 91945,
+                    "n_pred": 93943,
+                    "n_ref": 93924
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_3d_data/segreVal_wocls/case_0257.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0257.nii.gz"
+        },
+        {
+            "metrics": {
+                "whole_pancreas": {
+                    "Dice": 0.9749971983178111,
+                    "FN": 4471,
+                    "FP": 4007,
+                    "IoU": 0.9512141788468178,
+                    "TN": 2207020,
+                    "TP": 165302,
+                    "n_pred": 169309,
+                    "n_ref": 169773
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_3d_data/segreVal_wocls/case_0258.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0258.nii.gz"
+        },
+        {
+            "metrics": {
+                "whole_pancreas": {
+                    "Dice": 0.9791127654185622,
+                    "FN": 4794,
+                    "FP": 1721,
+                    "IoU": 0.9590802316379213,
+                    "TN": 2161643,
+                    "TP": 152699,
+                    "n_pred": 154420,
+                    "n_ref": 157493
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_3d_data/segreVal_wocls/case_0259.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0259.nii.gz"
+        },
+        {
+            "metrics": {
+                "whole_pancreas": {
+                    "Dice": 0.9775808300407912,
+                    "FN": 5870,
+                    "FP": 4633,
+                    "IoU": 0.9561448560083176,
+                    "TN": 3039671,
+                    "TP": 228990,
+                    "n_pred": 233623,
+                    "n_ref": 234860
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_3d_data/segreVal_wocls/case_0260.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0260.nii.gz"
+        },
+        {
+            "metrics": {
+                "whole_pancreas": {
+                    "Dice": 0.9018705429359094,
+                    "FN": 501,
+                    "FP": 3806,
+                    "IoU": 0.8212788912403004,
+                    "TN": 701301,
+                    "TP": 19792,
+                    "n_pred": 23598,
+                    "n_ref": 20293
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_3d_data/segreVal_wocls/case_0261.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0261.nii.gz"
+        },
+        {
+            "metrics": {
+                "whole_pancreas": {
+                    "Dice": 0.9766084001602806,
+                    "FN": 2153,
+                    "FP": 2342,
+                    "IoU": 0.954286121083302,
+                    "TN": 1119646,
+                    "TP": 93834,
+                    "n_pred": 96176,
+                    "n_ref": 95987
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_3d_data/segreVal_wocls/case_0262.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0262.nii.gz"
+        },
+        {
+            "metrics": {
+                "whole_pancreas": {
+                    "Dice": 0.973253997472662,
+                    "FN": 3940,
+                    "FP": 1436,
+                    "IoU": 0.9479014236013529,
+                    "TN": 2507081,
+                    "TP": 97813,
+                    "n_pred": 99249,
+                    "n_ref": 101753
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_3d_data/segreVal_wocls/case_0263.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0263.nii.gz"
+        },
+        {
+            "metrics": {
+                "whole_pancreas": {
+                    "Dice": 0.9699769183451187,
+                    "FN": 4866,
+                    "FP": 5774,
+                    "IoU": 0.9417040604436847,
+                    "TN": 3034983,
+                    "TP": 171877,
+                    "n_pred": 177651,
+                    "n_ref": 176743
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_3d_data/segreVal_wocls/case_0264.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0264.nii.gz"
+        },
+        {
+            "metrics": {
+                "whole_pancreas": {
+                    "Dice": 0.9790681582285781,
+                    "FN": 715,
+                    "FP": 737,
+                    "IoU": 0.9589946342841006,
+                    "TN": 533656,
+                    "TP": 33958,
+                    "n_pred": 34695,
+                    "n_ref": 34673
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_3d_data/segreVal_wocls/case_0265.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0265.nii.gz"
+        },
+        {
+            "metrics": {
+                "whole_pancreas": {
+                    "Dice": 0.9796824118491544,
+                    "FN": 3008,
+                    "FP": 1634,
+                    "IoU": 0.9601739921240251,
+                    "TN": 1128209,
+                    "TP": 111915,
+                    "n_pred": 113549,
+                    "n_ref": 114923
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_3d_data/segreVal_wocls/case_0266.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0266.nii.gz"
+        },
+        {
+            "metrics": {
+                "whole_pancreas": {
+                    "Dice": 0.963208291089332,
+                    "FN": 4550,
+                    "FP": 1982,
+                    "IoU": 0.9290277717414924,
+                    "TN": 1131184,
+                    "TP": 85504,
+                    "n_pred": 87486,
+                    "n_ref": 90054
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_3d_data/segreVal_wocls/case_0267.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0267.nii.gz"
+        },
+        {
+            "metrics": {
+                "whole_pancreas": {
+                    "Dice": 0.9729955014554115,
+                    "FN": 2367,
+                    "FP": 1715,
+                    "IoU": 0.947411138738228,
+                    "TN": 1101403,
+                    "TP": 73539,
+                    "n_pred": 75254,
+                    "n_ref": 75906
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_3d_data/segreVal_wocls/case_0268.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0268.nii.gz"
+        },
+        {
+            "metrics": {
+                "whole_pancreas": {
+                    "Dice": 0.9812674558564033,
+                    "FN": 785,
+                    "FP": 818,
+                    "IoU": 0.9632238230705699,
+                    "TN": 897212,
+                    "TP": 41985,
+                    "n_pred": 42803,
+                    "n_ref": 42770
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_3d_data/segreVal_wocls/case_0269.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0269.nii.gz"
+        },
+        {
+            "metrics": {
+                "whole_pancreas": {
+                    "Dice": 0.9761268182013986,
+                    "FN": 5016,
+                    "FP": 3297,
+                    "IoU": 0.9533669164834179,
+                    "TN": 1866467,
+                    "TP": 169951,
+                    "n_pred": 173248,
+                    "n_ref": 174967
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_3d_data/segreVal_wocls/case_0270.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0270.nii.gz"
+        },
+        {
+            "metrics": {
+                "whole_pancreas": {
+                    "Dice": 0.9562340744623539,
+                    "FN": 5119,
+                    "FP": 9910,
+                    "IoU": 0.9161384282302525,
+                    "TN": 4292724,
+                    "TP": 164183,
+                    "n_pred": 174093,
+                    "n_ref": 169302
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_3d_data/segreVal_wocls/case_0271.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0271.nii.gz"
+        },
+        {
+            "metrics": {
+                "whole_pancreas": {
+                    "Dice": 0.982166774145543,
+                    "FN": 921,
+                    "FP": 517,
+                    "IoU": 0.9649584521285669,
+                    "TN": 766803,
+                    "TP": 39599,
+                    "n_pred": 40116,
+                    "n_ref": 40520
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_3d_data/segreVal_wocls/case_0272.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0272.nii.gz"
+        },
+        {
+            "metrics": {
+                "whole_pancreas": {
+                    "Dice": 0.9768383011767516,
+                    "FN": 1700,
+                    "FP": 1402,
+                    "IoU": 0.9547252426475954,
+                    "TN": 1158581,
+                    "TP": 65413,
+                    "n_pred": 66815,
+                    "n_ref": 67113
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_3d_data/segreVal_wocls/case_0273.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0273.nii.gz"
+        },
+        {
+            "metrics": {
+                "whole_pancreas": {
+                    "Dice": 0.9398722536200381,
+                    "FN": 727,
+                    "FP": 6465,
+                    "IoU": 0.8865650925838302,
+                    "TN": 1880526,
+                    "TP": 56210,
+                    "n_pred": 62675,
+                    "n_ref": 56937
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_3d_data/segreVal_wocls/case_0274.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0274.nii.gz"
+        },
+        {
+            "metrics": {
+                "whole_pancreas": {
+                    "Dice": 0.9732046735482237,
+                    "FN": 4741,
+                    "FP": 2029,
+                    "IoU": 0.9478078527210071,
+                    "TN": 1568137,
+                    "TP": 122943,
+                    "n_pred": 124972,
+                    "n_ref": 127684
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_3d_data/segreVal_wocls/case_0275.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0275.nii.gz"
+        },
+        {
+            "metrics": {
+                "whole_pancreas": {
+                    "Dice": 0.9657680108744903,
+                    "FN": 1378,
+                    "FP": 1644,
+                    "IoU": 0.9338021072922827,
+                    "TN": 885405,
+                    "TP": 42629,
+                    "n_pred": 44273,
+                    "n_ref": 44007
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_3d_data/segreVal_wocls/case_0276.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0276.nii.gz"
+        },
+        {
+            "metrics": {
+                "whole_pancreas": {
+                    "Dice": 0.9821942573197459,
+                    "FN": 1007,
+                    "FP": 756,
+                    "IoU": 0.9650115106771453,
+                    "TN": 810312,
+                    "TP": 48625,
+                    "n_pred": 49381,
+                    "n_ref": 49632
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_3d_data/segreVal_wocls/case_0277.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0277.nii.gz"
+        },
+        {
+            "metrics": {
+                "whole_pancreas": {
+                    "Dice": 0.9636624302073062,
+                    "FN": 3756,
+                    "FP": 2251,
+                    "IoU": 0.9298731014837904,
+                    "TN": 2276041,
+                    "TP": 79652,
+                    "n_pred": 81903,
+                    "n_ref": 83408
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_3d_data/segreVal_wocls/case_0278.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0278.nii.gz"
+        },
+        {
+            "metrics": {
+                "whole_pancreas": {
+                    "Dice": 0.9612230489328192,
+                    "FN": 1952,
+                    "FP": 904,
+                    "IoU": 0.9253411407957338,
+                    "TN": 726146,
+                    "TP": 35398,
+                    "n_pred": 36302,
+                    "n_ref": 37350
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_3d_data/segreVal_wocls/case_0279.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0279.nii.gz"
+        },
+        {
+            "metrics": {
+                "whole_pancreas": {
+                    "Dice": 0.9460857270427147,
+                    "FN": 1268,
+                    "FP": 1630,
+                    "IoU": 0.8976875551632834,
+                    "TN": 1190563,
+                    "TP": 25427,
+                    "n_pred": 27057,
+                    "n_ref": 26695
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_3d_data/segreVal_wocls/case_0280.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0280.nii.gz"
+        },
+        {
+            "metrics": {
+                "whole_pancreas": {
+                    "Dice": 0.9728941311367603,
+                    "FN": 1815,
+                    "FP": 1400,
+                    "IoU": 0.947218938796953,
+                    "TN": 1200788,
+                    "TP": 57697,
+                    "n_pred": 59097,
+                    "n_ref": 59512
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_3d_data/segreVal_wocls/case_0281.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0281.nii.gz"
+        },
+        {
+            "metrics": {
+                "whole_pancreas": {
+                    "Dice": 0.977048663143781,
+                    "FN": 1529,
+                    "FP": 1090,
+                    "IoU": 0.9551272166538165,
+                    "TN": 716635,
+                    "TP": 55746,
+                    "n_pred": 56836,
+                    "n_ref": 57275
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_3d_data/segreVal_wocls/case_0282.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0282.nii.gz"
+        },
+        {
+            "metrics": {
+                "whole_pancreas": {
+                    "Dice": 0.9654783623166845,
+                    "FN": 2605,
+                    "FP": 1804,
+                    "IoU": 0.9332606754158909,
+                    "TN": 1864989,
+                    "TP": 61654,
+                    "n_pred": 63458,
+                    "n_ref": 64259
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_3d_data/segreVal_wocls/case_0283.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0283.nii.gz"
+        },
+        {
+            "metrics": {
+                "whole_pancreas": {
+                    "Dice": 0.9695709706489625,
+                    "FN": 5743,
+                    "FP": 4927,
+                    "IoU": 0.9409391069461588,
+                    "TN": 3036875,
+                    "TP": 169991,
+                    "n_pred": 174918,
+                    "n_ref": 175734
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_3d_data/segreVal_wocls/case_0284.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0284.nii.gz"
+        },
+        {
+            "metrics": {
+                "whole_pancreas": {
+                    "Dice": 0.9772391368607745,
+                    "FN": 1219,
+                    "FP": 937,
+                    "IoU": 0.9554913294797688,
+                    "TN": 482000,
+                    "TP": 46284,
+                    "n_pred": 47221,
+                    "n_ref": 47503
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_3d_data/segreVal_wocls/case_0285.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0285.nii.gz"
+        },
+        {
+            "metrics": {
+                "whole_pancreas": {
+                    "Dice": 0.9708432932041086,
+                    "FN": 5842,
+                    "FP": 4221,
+                    "IoU": 0.9433386449248025,
+                    "TN": 1742101,
+                    "TP": 167536,
+                    "n_pred": 171757,
+                    "n_ref": 173378
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_3d_data/segreVal_wocls/case_0286.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0286.nii.gz"
+        },
+        {
+            "metrics": {
+                "whole_pancreas": {
+                    "Dice": 0.9800075588210801,
+                    "FN": 1845,
+                    "FP": 1276,
+                    "IoU": 0.960798844438862,
+                    "TN": 1115315,
+                    "TP": 76494,
+                    "n_pred": 77770,
+                    "n_ref": 78339
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_3d_data/segreVal_wocls/case_0287.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0287.nii.gz"
+        }
+    ]
+}

@@ -1,0 +1,7 @@
+{
+    "folder_with_segs_from_prev_stage": null,
+    "list_of_lists_or_source_folder": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/imagesVal",
+    "output_folder_or_list_of_truncated_output_files": "/nfs/home/mwei/nnUNet_results/nnUNet_results_sum_headver7_bs8_with_pretrain/segreTr_fast",
+    "overwrite": true,
+    "save_probabilities": true
+}

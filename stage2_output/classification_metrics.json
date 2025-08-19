@@ -1,0 +1,85 @@
+{
+    "accuracy": 0.5555555555555556,
+    "auc_macro": null,
+    "auc_weighted": null,
+    "class_names": [
+        "subtype0",
+        "subtype1",
+        "subtype2"
+    ],
+    "classification_report": {
+        "accuracy": 0.5555555555555556,
+        "macro avg": {
+            "f1-score": 0.5506172839506173,
+            "precision": 0.5777777777777778,
+            "recall": 0.5425925925925926,
+            "support": 36.0
+        },
+        "subtype0": {
+            "f1-score": 0.5333333333333333,
+            "precision": 0.6666666666666666,
+            "recall": 0.4444444444444444,
+            "support": 9.0
+        },
+        "subtype1": {
+            "f1-score": 0.6,
+            "precision": 0.6,
+            "recall": 0.6,
+            "support": 15.0
+        },
+        "subtype2": {
+            "f1-score": 0.5185185185185185,
+            "precision": 0.4666666666666667,
+            "recall": 0.5833333333333334,
+            "support": 12.0
+        },
+        "weighted avg": {
+            "f1-score": 0.5561728395061728,
+            "precision": 0.5722222222222223,
+            "recall": 0.5555555555555556,
+            "support": 36.0
+        }
+    },
+    "confusion_matrix": [
+        [
+            4,
+            1,
+            4
+        ],
+        [
+            2,
+            9,
+            4
+        ],
+        [
+            0,
+            5,
+            7
+        ]
+    ],
+    "f1_macro": 0.5506172839506173,
+    "f1_micro": 0.5555555555555556,
+    "f1_per_class": [
+        0.5333333333333333,
+        0.6,
+        0.5185185185185185
+    ],
+    "f1_weighted": 0.5561728395061728,
+    "n_samples": 36,
+    "precision_macro": 0.5777777777777778,
+    "precision_micro": 0.5555555555555556,
+    "precision_per_class": [
+        0.6666666666666666,
+        0.6,
+        0.4666666666666667
+    ],
+    "precision_weighted": 0.5722222222222223,
+    "recall_macro": 0.5425925925925926,
+    "recall_micro": 0.5555555555555556,
+    "recall_per_class": [
+        0.4444444444444444,
+        0.6,
+        0.5833333333333334
+    ],
+    "recall_weighted": 0.5555555555555556
+}

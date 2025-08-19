@@ -94,6 +94,8 @@ nnUNetv2_train Dataset001_3DCT 3d_fullres 0 \
 ```
 ## Inference
 
+Follow the instructions or use **[inf.sh](inf.sh)** to conduct training.
+
 ### Segmentation only
 Inference original nnUNet version.
 
@@ -129,6 +131,8 @@ python nnunetv2/inference/predict_classification_fast_CLSHeadSum.py \
 
 ## Evaluation
 
+Follow the instructions or use **[eval.sh](eval.sh)** to conduct training.
+
 ### Segmentation evaluation
 
 ```bash
@@ -157,6 +161,14 @@ python nnunetv2/evaluation/evaluate_classification.py \
   --class-names "subtype0" "subtype1" "subtype2"
 ```
 
+## Evaluation Results
+
+The classification performance report can be found in **[classification metrics report](stage2_output/classification_metrics.json)**.
+
+The segmentation performance for multi-class can be found in **[pancreas/lesion segmentation report](stage2_output/summary.json)**.
+
+The segmentation performance for whole pancreas can be found in **[whole pancreas segmentation report](stage2_output/whole_pancreas_summary.json)**.
+
 ## Quickstart (End-to-End Example)
 
 ```bash
@@ -165,14 +177,18 @@ export nnUNet_raw="/path/to/nnUNet_raw"
 export nnUNet_preprocessed="/path/to/nnUNet_preprocessed"
 export nnUNet_results="/path/to/nnUNet_results_sum_bs8"
 
-# 2. Train model (sum head classification)
+# 2. Train model for stage 1 (segmentation only)
+
+nnUNetv2_train Dataset001_3DCT 3d_fullres 0 --npz
+
+# 3. Train model (fine-tune with clalssification branch)
 export NNUNETV2_MT_NUM_CLS=3
 export NNUNETV2_MT_LOSS_WEIGHT=0.3
-
+export NNUNETV2_PRE_CHECKPOINT_PATH="/path/to/checkpoint_best_stage1.pth" 
 nnUNetv2_train Dataset001_3DCT 3d_fullres 0 \
-  -tr nnUNetTrainer_CLSHeadSum -p nnUNetPlans --npz
+  -tr nnUNetTrainer_CLSHeadSumFT -p nnUNetPlans --npz
 
-# 3. Fast inference (segmentation + classification)
+# 4. Fast inference (segmentation + classification)
 python nnunetv2/inference/predict_classification_fast_CLSHeadSum.py \
   -i $nnUNet_raw/Dataset001_3DCT/imagesVal \
   -o $nnUNet_results/segreTr_fast \
@@ -185,20 +201,20 @@ python nnunetv2/inference/predict_classification_fast_CLSHeadSum.py \
   -chk checkpoint_latest.pth \
   --save_probabilities
 
-# 4. Evaluate segmentation (pancreas/lesion/background)
+# 5. Evaluate segmentation (pancreas/lesion/background)
 nnUNetv2_evaluate_folder \
   $nnUNet_raw/Dataset001_3DCT/labelsVal \
   $nnUNet_results/segreTr_fast \
   -djfile $nnUNet_raw/Dataset001_3DCT/dataset.json \
   -pfile $nnUNet_results/Dataset001_3DCT/nnUNetTrainer_CLSHeadSum__nnUNetPlans__3d_fullres/fold_0/plans.json
 
-# 5. Evaluate whole-pancreas segmentation performance
+# 6. Evaluate whole-pancreas segmentation performance
 python nnunetv2/evaluation/evaluate_whole_pancreas.py \
   $nnUNet_raw/Dataset001_3DCT/labelsVal \
   $nnUNet_results/segreTr_fast \
   -djfile $nnUNet_raw/Dataset001_3DCT/dataset.json
 
-# 6. Evaluate classification
+# 7. Evaluate classification
 python nnunetv2/evaluation/evaluate_classification.py \
   $nnUNet_results/segreTr_fast \
   $nnUNet_raw/Dataset001_3DCT/classification.json \

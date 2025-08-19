@@ -1,0 +1,972 @@
+{
+    "foreground_mean": {
+        "Dice": 0.5818143174581452,
+        "FN": 1080.5833333333335,
+        "FP": 26540.98611111111,
+        "IoU": 0.5442135711491995,
+        "TN": 1699575.1527777778,
+        "TP": 24489.916666666668,
+        "n_pred": 51030.90277777778,
+        "n_ref": 25570.5
+    },
+    "mean": {
+        "1": {
+            "Dice": 0.3154970399392655,
+            "FN": 1127.9166666666667,
+            "FP": 52022.555555555555,
+            "IoU": 0.30018176696048804,
+            "TN": 1665737.8333333333,
+            "TP": 32798.333333333336,
+            "n_pred": 84820.88888888889,
+            "n_ref": 33926.25
+        },
+        "2": {
+            "Dice": 0.848131594977025,
+            "FN": 1033.25,
+            "FP": 1059.4166666666667,
+            "IoU": 0.7882453753379112,
+            "TN": 1733412.4722222222,
+            "TP": 16181.5,
+            "n_pred": 17240.916666666668,
+            "n_ref": 17214.75
+        }
+    },
+    "metric_per_case": [
+        {
+            "metrics": {
+                "1": {
+                    "Dice": 0.0,
+                    "FN": 0,
+                    "FP": 297593,
+                    "IoU": 0.0,
+                    "TN": 4433506,
+                    "TP": 0,
+                    "n_pred": 297593,
+                    "n_ref": 0
+                },
+                "2": {
+                    "Dice": 0.9231571520598791,
+                    "FN": 1377,
+                    "FP": 1128,
+                    "IoU": 0.8572812215132178,
+                    "TN": 4713547,
+                    "TP": 15047,
+                    "n_pred": 16175,
+                    "n_ref": 16424
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_results/nnUNet_results_sum_headver7_bs8_with_pretrain/segreTr_fast/case_0252.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0252.nii.gz"
+        },
+        {
+            "metrics": {
+                "1": {
+                    "Dice": 0.0,
+                    "FN": 0,
+                    "FP": 65732,
+                    "IoU": 0.0,
+                    "TN": 2387164,
+                    "TP": 0,
+                    "n_pred": 65732,
+                    "n_ref": 0
+                },
+                "2": {
+                    "Dice": 0.7310155535224153,
+                    "FN": 464,
+                    "FP": 1888,
+                    "IoU": 0.5760634462869503,
+                    "TN": 2447348,
+                    "TP": 3196,
+                    "n_pred": 5084,
+                    "n_ref": 3660
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_results/nnUNet_results_sum_headver7_bs8_with_pretrain/segreTr_fast/case_0253.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0253.nii.gz"
+        },
+        {
+            "metrics": {
+                "1": {
+                    "Dice": 0.0,
+                    "FN": 0,
+                    "FP": 37095,
+                    "IoU": 0.0,
+                    "TN": 528785,
+                    "TP": 0,
+                    "n_pred": 37095,
+                    "n_ref": 0
+                },
+                "2": {
+                    "Dice": 0.9253348009539534,
+                    "FN": 320,
+                    "FP": 87,
+                    "IoU": 0.8610447251621713,
+                    "TN": 562951,
+                    "TP": 2522,
+                    "n_pred": 2609,
+                    "n_ref": 2842
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_results/nnUNet_results_sum_headver7_bs8_with_pretrain/segreTr_fast/case_0254.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0254.nii.gz"
+        },
+        {
+            "metrics": {
+                "1": {
+                    "Dice": 0.0,
+                    "FN": 0,
+                    "FP": 36396,
+                    "IoU": 0.0,
+                    "TN": 950054,
+                    "TP": 0,
+                    "n_pred": 36396,
+                    "n_ref": 0
+                },
+                "2": {
+                    "Dice": 0.9721111326438928,
+                    "FN": 602,
+                    "FP": 2564,
+                    "IoU": 0.9457356369121075,
+                    "TN": 928106,
+                    "TP": 55178,
+                    "n_pred": 57742,
+                    "n_ref": 55780
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_results/nnUNet_results_sum_headver7_bs8_with_pretrain/segreTr_fast/case_0255.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0255.nii.gz"
+        },
+        {
+            "metrics": {
+                "1": {
+                    "Dice": 0.0,
+                    "FN": 0,
+                    "FP": 159220,
+                    "IoU": 0.0,
+                    "TN": 3004122,
+                    "TP": 0,
+                    "n_pred": 159220,
+                    "n_ref": 0
+                },
+                "2": {
+                    "Dice": 0.9441151566469094,
+                    "FN": 214,
+                    "FP": 50,
+                    "IoU": 0.8941459502806736,
+                    "TN": 3160848,
+                    "TP": 2230,
+                    "n_pred": 2280,
+                    "n_ref": 2444
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_results/nnUNet_results_sum_headver7_bs8_with_pretrain/segreTr_fast/case_0256.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0256.nii.gz"
+        },
+        {
+            "metrics": {
+                "1": {
+                    "Dice": 0.951765668356288,
+                    "FN": 2784,
+                    "FP": 2935,
+                    "IoU": 0.9079703265049965,
+                    "TN": 1029584,
+                    "TP": 56424,
+                    "n_pred": 59359,
+                    "n_ref": 59208
+                },
+                "2": {
+                    "Dice": 0.9701781287169859,
+                    "FN": 866,
+                    "FP": 1215,
+                    "IoU": 0.9420834377000362,
+                    "TN": 1055796,
+                    "TP": 33850,
+                    "n_pred": 35065,
+                    "n_ref": 34716
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_results/nnUNet_results_sum_headver7_bs8_with_pretrain/segreTr_fast/case_0257.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0257.nii.gz"
+        },
+        {
+            "metrics": {
+                "1": {
+                    "Dice": 0.9643068931163717,
+                    "FN": 3666,
+                    "FP": 8372,
+                    "IoU": 0.9310739703752055,
+                    "TN": 2206149,
+                    "TP": 162613,
+                    "n_pred": 170985,
+                    "n_ref": 166279
+                },
+                "2": {
+                    "Dice": 0.9122657580919932,
+                    "FN": 281,
+                    "FP": 337,
+                    "IoU": 0.8386844166014096,
+                    "TN": 2376969,
+                    "TP": 3213,
+                    "n_pred": 3550,
+                    "n_ref": 3494
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_results/nnUNet_results_sum_headver7_bs8_with_pretrain/segreTr_fast/case_0258.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0258.nii.gz"
+        },
+        {
+            "metrics": {
+                "1": {
+                    "Dice": 0.9678664904506465,
+                    "FN": 6111,
+                    "FP": 3809,
+                    "IoU": 0.9377338120464987,
+                    "TN": 2161541,
+                    "TP": 149396,
+                    "n_pred": 153205,
+                    "n_ref": 155507
+                },
+                "2": {
+                    "Dice": 0.7986751833451621,
+                    "FN": 298,
+                    "FP": 553,
+                    "IoU": 0.6648286727057897,
+                    "TN": 2318318,
+                    "TP": 1688,
+                    "n_pred": 2241,
+                    "n_ref": 1986
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_results/nnUNet_results_sum_headver7_bs8_with_pretrain/segreTr_fast/case_0259.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0259.nii.gz"
+        },
+        {
+            "metrics": {
+                "1": {
+                    "Dice": 0.9583031826592519,
+                    "FN": 6027,
+                    "FP": 10626,
+                    "IoU": 0.9199444278860484,
+                    "TN": 3071146,
+                    "TP": 191365,
+                    "n_pred": 201991,
+                    "n_ref": 197392
+                },
+                "2": {
+                    "Dice": 0.9507483282029509,
+                    "FN": 1640,
+                    "FP": 2072,
+                    "IoU": 0.9061203844208396,
+                    "TN": 3239624,
+                    "TP": 35828,
+                    "n_pred": 37900,
+                    "n_ref": 37468
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_results/nnUNet_results_sum_headver7_bs8_with_pretrain/segreTr_fast/case_0260.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0260.nii.gz"
+        },
+        {
+            "metrics": {
+                "1": {
+                    "Dice": 0.8276555070829861,
+                    "FN": 1139,
+                    "FP": 5893,
+                    "IoU": 0.7059831918718903,
+                    "TN": 701483,
+                    "TP": 16885,
+                    "n_pred": 22778,
+                    "n_ref": 18024
+                },
+                "2": {
+                    "Dice": 0.16348357524828114,
+                    "FN": 2055,
+                    "FP": 135,
+                    "IoU": 0.08901830282861897,
+                    "TN": 722996,
+                    "TP": 214,
+                    "n_pred": 349,
+                    "n_ref": 2269
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_results/nnUNet_results_sum_headver7_bs8_with_pretrain/segreTr_fast/case_0261.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0261.nii.gz"
+        },
+        {
+            "metrics": {
+                "1": {
+                    "Dice": 0.0,
+                    "FN": 0,
+                    "FP": 57144,
+                    "IoU": 0.0,
+                    "TN": 1160831,
+                    "TP": 0,
+                    "n_pred": 57144,
+                    "n_ref": 0
+                },
+                "2": {
+                    "Dice": 0.9618303816961831,
+                    "FN": 2153,
+                    "FP": 970,
+                    "IoU": 0.9264674719220174,
+                    "TN": 1175504,
+                    "TP": 39348,
+                    "n_pred": 40318,
+                    "n_ref": 41501
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_results/nnUNet_results_sum_headver7_bs8_with_pretrain/segreTr_fast/case_0262.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0262.nii.gz"
+        },
+        {
+            "metrics": {
+                "1": {
+                    "Dice": 0.9678165139435313,
+                    "FN": 2336,
+                    "FP": 4151,
+                    "IoU": 0.9376399903869262,
+                    "TN": 2506245,
+                    "TP": 97538,
+                    "n_pred": 101689,
+                    "n_ref": 99874
+                },
+                "2": {
+                    "Dice": 0.9031710079275198,
+                    "FN": 284,
+                    "FP": 58,
+                    "IoU": 0.8234383066597831,
+                    "TN": 2608333,
+                    "TP": 1595,
+                    "n_pred": 1653,
+                    "n_ref": 1879
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_results/nnUNet_results_sum_headver7_bs8_with_pretrain/segreTr_fast/case_0263.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0263.nii.gz"
+        },
+        {
+            "metrics": {
+                "1": {
+                    "Dice": 0.0,
+                    "FN": 0,
+                    "FP": 168981,
+                    "IoU": 0.0,
+                    "TN": 3048519,
+                    "TP": 0,
+                    "n_pred": 168981,
+                    "n_ref": 0
+                },
+                "2": {
+                    "Dice": 0.94597410328918,
+                    "FN": 230,
+                    "FP": 496,
+                    "IoU": 0.8974865857102513,
+                    "TN": 3210418,
+                    "TP": 6356,
+                    "n_pred": 6852,
+                    "n_ref": 6586
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_results/nnUNet_results_sum_headver7_bs8_with_pretrain/segreTr_fast/case_0264.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0264.nii.gz"
+        },
+        {
+            "metrics": {
+                "1": {
+                    "Dice": 0.9528328901615872,
+                    "FN": 964,
+                    "FP": 1342,
+                    "IoU": 0.9099148370966482,
+                    "TN": 543468,
+                    "TP": 23292,
+                    "n_pred": 24634,
+                    "n_ref": 24256
+                },
+                "2": {
+                    "Dice": 0.9571550174973991,
+                    "FN": 297,
+                    "FP": 609,
+                    "IoU": 0.9178305822601125,
+                    "TN": 558040,
+                    "TP": 10120,
+                    "n_pred": 10729,
+                    "n_ref": 10417
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_results/nnUNet_results_sum_headver7_bs8_with_pretrain/segreTr_fast/case_0265.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0265.nii.gz"
+        },
+        {
+            "metrics": {
+                "1": {
+                    "Dice": 0.0,
+                    "FN": 0,
+                    "FP": 97616,
+                    "IoU": 0.0,
+                    "TN": 1147150,
+                    "TP": 0,
+                    "n_pred": 97616,
+                    "n_ref": 0
+                },
+                "2": {
+                    "Dice": 0.9577049434772487,
+                    "FN": 639,
+                    "FP": 996,
+                    "IoU": 0.9188424501141665,
+                    "TN": 1224620,
+                    "TP": 18511,
+                    "n_pred": 19507,
+                    "n_ref": 19150
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_results/nnUNet_results_sum_headver7_bs8_with_pretrain/segreTr_fast/case_0266.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0266.nii.gz"
+        },
+        {
+            "metrics": {
+                "1": {
+                    "Dice": 0.0,
+                    "FN": 0,
+                    "FP": 75235,
+                    "IoU": 0.0,
+                    "TN": 1147985,
+                    "TP": 0,
+                    "n_pred": 75235,
+                    "n_ref": 0
+                },
+                "2": {
+                    "Dice": 0.9263865111922219,
+                    "FN": 1205,
+                    "FP": 1074,
+                    "IoU": 0.8628678019134726,
+                    "TN": 1206601,
+                    "TP": 14340,
+                    "n_pred": 15414,
+                    "n_ref": 15545
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_results/nnUNet_results_sum_headver7_bs8_with_pretrain/segreTr_fast/case_0267.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0267.nii.gz"
+        },
+        {
+            "metrics": {
+                "1": {
+                    "Dice": 0.0,
+                    "FN": 0,
+                    "FP": 58477,
+                    "IoU": 0.0,
+                    "TN": 1120547,
+                    "TP": 0,
+                    "n_pred": 58477,
+                    "n_ref": 0
+                },
+                "2": {
+                    "Dice": 0.9557805558425457,
+                    "FN": 1180,
+                    "FP": 532,
+                    "IoU": 0.9153062234095182,
+                    "TN": 1158810,
+                    "TP": 18502,
+                    "n_pred": 19034,
+                    "n_ref": 19682
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_results/nnUNet_results_sum_headver7_bs8_with_pretrain/segreTr_fast/case_0268.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0268.nii.gz"
+        },
+        {
+            "metrics": {
+                "1": {
+                    "Dice": 0.0,
+                    "FN": 0,
+                    "FP": 31192,
+                    "IoU": 0.0,
+                    "TN": 909608,
+                    "TP": 0,
+                    "n_pred": 31192,
+                    "n_ref": 0
+                },
+                "2": {
+                    "Dice": 0.9757601713062098,
+                    "FN": 303,
+                    "FP": 263,
+                    "IoU": 0.9526676701789597,
+                    "TN": 928842,
+                    "TP": 11392,
+                    "n_pred": 11655,
+                    "n_ref": 11695
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_results/nnUNet_results_sum_headver7_bs8_with_pretrain/segreTr_fast/case_0269.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0269.nii.gz"
+        },
+        {
+            "metrics": {
+                "1": {
+                    "Dice": 0.0,
+                    "FN": 0,
+                    "FP": 174511,
+                    "IoU": 0.0,
+                    "TN": 1870220,
+                    "TP": 0,
+                    "n_pred": 174511,
+                    "n_ref": 0
+                },
+                "2": {
+                    "Dice": 0.9158427779117434,
+                    "FN": 323,
+                    "FP": 26,
+                    "IoU": 0.8447508896797153,
+                    "TN": 2042483,
+                    "TP": 1899,
+                    "n_pred": 1925,
+                    "n_ref": 2222
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_results/nnUNet_results_sum_headver7_bs8_with_pretrain/segreTr_fast/case_0270.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0270.nii.gz"
+        },
+        {
+            "metrics": {
+                "1": {
+                    "Dice": 0.9515904974590726,
+                    "FN": 5230,
+                    "FP": 11288,
+                    "IoU": 0.9076515380228775,
+                    "TN": 4293070,
+                    "TP": 162348,
+                    "n_pred": 173636,
+                    "n_ref": 167578
+                },
+                "2": {
+                    "Dice": 0.0,
+                    "FN": 1724,
+                    "FP": 0,
+                    "IoU": 0.0,
+                    "TN": 4470212,
+                    "TP": 0,
+                    "n_pred": 0,
+                    "n_ref": 1724
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_results/nnUNet_results_sum_headver7_bs8_with_pretrain/segreTr_fast/case_0271.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0271.nii.gz"
+        },
+        {
+            "metrics": {
+                "1": {
+                    "Dice": 0.0,
+                    "FN": 0,
+                    "FP": 36328,
+                    "IoU": 0.0,
+                    "TN": 771512,
+                    "TP": 0,
+                    "n_pred": 36328,
+                    "n_ref": 0
+                },
+                "2": {
+                    "Dice": 0.951130395067367,
+                    "FN": 254,
+                    "FP": 174,
+                    "IoU": 0.9068147180492053,
+                    "TN": 803247,
+                    "TP": 4165,
+                    "n_pred": 4339,
+                    "n_ref": 4419
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_results/nnUNet_results_sum_headver7_bs8_with_pretrain/segreTr_fast/case_0272.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0272.nii.gz"
+        },
+        {
+            "metrics": {
+                "1": {
+                    "Dice": 0.0,
+                    "FN": 0,
+                    "FP": 63012,
+                    "IoU": 0.0,
+                    "TN": 1164084,
+                    "TP": 0,
+                    "n_pred": 63012,
+                    "n_ref": 0
+                },
+                "2": {
+                    "Dice": 0.8922562939983295,
+                    "FN": 519,
+                    "FP": 384,
+                    "IoU": 0.8054717794054287,
+                    "TN": 1222454,
+                    "TP": 3739,
+                    "n_pred": 4123,
+                    "n_ref": 4258
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_results/nnUNet_results_sum_headver7_bs8_with_pretrain/segreTr_fast/case_0273.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0273.nii.gz"
+        },
+        {
+            "metrics": {
+                "1": {
+                    "Dice": 0.0,
+                    "FN": 0,
+                    "FP": 59433,
+                    "IoU": 0.0,
+                    "TN": 1884495,
+                    "TP": 0,
+                    "n_pred": 59433,
+                    "n_ref": 0
+                },
+                "2": {
+                    "Dice": 0.7633458007480449,
+                    "FN": 2429,
+                    "FP": 355,
+                    "IoU": 0.6172669782788012,
+                    "TN": 1936654,
+                    "TP": 4490,
+                    "n_pred": 4845,
+                    "n_ref": 6919
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_results/nnUNet_results_sum_headver7_bs8_with_pretrain/segreTr_fast/case_0274.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0274.nii.gz"
+        },
+        {
+            "metrics": {
+                "1": {
+                    "Dice": 0.0,
+                    "FN": 0,
+                    "FP": 94661,
+                    "IoU": 0.0,
+                    "TN": 1603189,
+                    "TP": 0,
+                    "n_pred": 94661,
+                    "n_ref": 0
+                },
+                "2": {
+                    "Dice": 0.9615283728250416,
+                    "FN": 1331,
+                    "FP": 1309,
+                    "IoU": 0.9259072156268418,
+                    "TN": 1662219,
+                    "TP": 32991,
+                    "n_pred": 34300,
+                    "n_ref": 34322
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_results/nnUNet_results_sum_headver7_bs8_with_pretrain/segreTr_fast/case_0275.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0275.nii.gz"
+        },
+        {
+            "metrics": {
+                "1": {
+                    "Dice": 0.0,
+                    "FN": 0,
+                    "FP": 40767,
+                    "IoU": 0.0,
+                    "TN": 890289,
+                    "TP": 0,
+                    "n_pred": 40767,
+                    "n_ref": 0
+                },
+                "2": {
+                    "Dice": 0.9212324929971989,
+                    "FN": 201,
+                    "FP": 502,
+                    "IoU": 0.853967594515995,
+                    "TN": 926242,
+                    "TP": 4111,
+                    "n_pred": 4613,
+                    "n_ref": 4312
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_results/nnUNet_results_sum_headver7_bs8_with_pretrain/segreTr_fast/case_0276.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0276.nii.gz"
+        },
+        {
+            "metrics": {
+                "1": {
+                    "Dice": 0.0,
+                    "FN": 0,
+                    "FP": 47334,
+                    "IoU": 0.0,
+                    "TN": 813366,
+                    "TP": 0,
+                    "n_pred": 47334,
+                    "n_ref": 0
+                },
+                "2": {
+                    "Dice": 0.9249478804725504,
+                    "FN": 156,
+                    "FP": 276,
+                    "IoU": 0.8603749191984487,
+                    "TN": 857606,
+                    "TP": 2662,
+                    "n_pred": 2938,
+                    "n_ref": 2818
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_results/nnUNet_results_sum_headver7_bs8_with_pretrain/segreTr_fast/case_0277.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0277.nii.gz"
+        },
+        {
+            "metrics": {
+                "1": {
+                    "Dice": 0.9479051573276601,
+                    "FN": 2829,
+                    "FP": 4762,
+                    "IoU": 0.9009693032236181,
+                    "TN": 2285047,
+                    "TP": 69062,
+                    "n_pred": 73824,
+                    "n_ref": 71891
+                },
+                "2": {
+                    "Dice": 0.947964197964198,
+                    "FN": 714,
+                    "FP": 472,
+                    "IoU": 0.9010759863207941,
+                    "TN": 2349711,
+                    "TP": 10803,
+                    "n_pred": 11275,
+                    "n_ref": 11517
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_results/nnUNet_results_sum_headver7_bs8_with_pretrain/segreTr_fast/case_0278.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0278.nii.gz"
+        },
+        {
+            "metrics": {
+                "1": {
+                    "Dice": 0.0,
+                    "FN": 0,
+                    "FP": 29664,
+                    "IoU": 0.0,
+                    "TN": 734736,
+                    "TP": 0,
+                    "n_pred": 29664,
+                    "n_ref": 0
+                },
+                "2": {
+                    "Dice": 0.8253713952810953,
+                    "FN": 241,
+                    "FP": 2157,
+                    "IoU": 0.702665840049597,
+                    "TN": 756335,
+                    "TP": 5667,
+                    "n_pred": 7824,
+                    "n_ref": 5908
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_results/nnUNet_results_sum_headver7_bs8_with_pretrain/segreTr_fast/case_0279.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0279.nii.gz"
+        },
+        {
+            "metrics": {
+                "1": {
+                    "Dice": 0.0,
+                    "FN": 0,
+                    "FP": 28282,
+                    "IoU": 0.0,
+                    "TN": 1190606,
+                    "TP": 0,
+                    "n_pred": 28282,
+                    "n_ref": 0
+                },
+                "2": {
+                    "Dice": 0.0032,
+                    "FN": 671,
+                    "FP": 575,
+                    "IoU": 0.0016025641025641025,
+                    "TN": 1217640,
+                    "TP": 2,
+                    "n_pred": 577,
+                    "n_ref": 673
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_results/nnUNet_results_sum_headver7_bs8_with_pretrain/segreTr_fast/case_0280.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0280.nii.gz"
+        },
+        {
+            "metrics": {
+                "1": {
+                    "Dice": 0.9472843825580576,
+                    "FN": 1647,
+                    "FP": 2843,
+                    "IoU": 0.8998483226266952,
+                    "TN": 1216868,
+                    "TP": 40342,
+                    "n_pred": 43185,
+                    "n_ref": 41989
+                },
+                "2": {
+                    "Dice": 0.9465770588905342,
+                    "FN": 903,
+                    "FP": 973,
+                    "IoU": 0.8985726643598616,
+                    "TN": 1243204,
+                    "TP": 16620,
+                    "n_pred": 17593,
+                    "n_ref": 17523
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_results/nnUNet_results_sum_headver7_bs8_with_pretrain/segreTr_fast/case_0281.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0281.nii.gz"
+        },
+        {
+            "metrics": {
+                "1": {
+                    "Dice": 0.0,
+                    "FN": 0,
+                    "FP": 30249,
+                    "IoU": 0.0,
+                    "TN": 744751,
+                    "TP": 0,
+                    "n_pred": 30249,
+                    "n_ref": 0
+                },
+                "2": {
+                    "Dice": 0.9599700042851022,
+                    "FN": 882,
+                    "FP": 1360,
+                    "IoU": 0.9230214592274678,
+                    "TN": 745875,
+                    "TP": 26883,
+                    "n_pred": 28243,
+                    "n_ref": 27765
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_results/nnUNet_results_sum_headver7_bs8_with_pretrain/segreTr_fast/case_0282.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0282.nii.gz"
+        },
+        {
+            "metrics": {
+                "1": {
+                    "Dice": 0.0,
+                    "FN": 0,
+                    "FP": 62968,
+                    "IoU": 0.0,
+                    "TN": 1868084,
+                    "TP": 0,
+                    "n_pred": 62968,
+                    "n_ref": 0
+                },
+                "2": {
+                    "Dice": 0.88745055735347,
+                    "FN": 546,
+                    "FP": 393,
+                    "IoU": 0.7976729153199742,
+                    "TN": 1926411,
+                    "TP": 3702,
+                    "n_pred": 4095,
+                    "n_ref": 4248
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_results/nnUNet_results_sum_headver7_bs8_with_pretrain/segreTr_fast/case_0283.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0283.nii.gz"
+        },
+        {
+            "metrics": {
+                "1": {
+                    "Dice": 0.9471632827569749,
+                    "FN": 6304,
+                    "FP": 9638,
+                    "IoU": 0.89962979752191,
+                    "TN": 3058704,
+                    "TP": 142890,
+                    "n_pred": 152528,
+                    "n_ref": 149194
+                },
+                "2": {
+                    "Dice": 0.8917505629268474,
+                    "FN": 2580,
+                    "FP": 3237,
+                    "IoU": 0.8046478825939484,
+                    "TN": 3187759,
+                    "TP": 23960,
+                    "n_pred": 27197,
+                    "n_ref": 26540
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_results/nnUNet_results_sum_headver7_bs8_with_pretrain/segreTr_fast/case_0284.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0284.nii.gz"
+        },
+        {
+            "metrics": {
+                "1": {
+                    "Dice": 0.0,
+                    "FN": 0,
+                    "FP": 17005,
+                    "IoU": 0.0,
+                    "TN": 513435,
+                    "TP": 0,
+                    "n_pred": 17005,
+                    "n_ref": 0
+                },
+                "2": {
+                    "Dice": 0.9662856035652005,
+                    "FN": 1322,
+                    "FP": 766,
+                    "IoU": 0.9347703842549203,
+                    "TN": 498430,
+                    "TP": 29922,
+                    "n_pred": 30688,
+                    "n_ref": 31244
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_results/nnUNet_results_sum_headver7_bs8_with_pretrain/segreTr_fast/case_0285.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0285.nii.gz"
+        },
+        {
+            "metrics": {
+                "1": {
+                    "Dice": 0.0,
+                    "FN": 0,
+                    "FP": 36078,
+                    "IoU": 0.0,
+                    "TN": 1883622,
+                    "TP": 0,
+                    "n_pred": 36078,
+                    "n_ref": 0
+                },
+                "2": {
+                    "Dice": 0.9367849475943932,
+                    "FN": 7773,
+                    "FP": 9748,
+                    "IoU": 0.8810869875053446,
+                    "TN": 1772357,
+                    "TP": 129822,
+                    "n_pred": 139570,
+                    "n_ref": 137595
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_results/nnUNet_results_sum_headver7_bs8_with_pretrain/segreTr_fast/case_0286.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0286.nii.gz"
+        },
+        {
+            "metrics": {
+                "1": {
+                    "Dice": 0.9734029719411289,
+                    "FN": 1568,
+                    "FP": 2180,
+                    "IoU": 0.9481840930142535,
+                    "TN": 1122597,
+                    "TP": 68585,
+                    "n_pred": 70765,
+                    "n_ref": 70153
+                },
+                "2": {
+                    "Dice": 0.962251615630851,
+                    "FN": 220,
+                    "FP": 405,
+                    "IoU": 0.9272494470957979,
+                    "TN": 1186339,
+                    "TP": 7966,
+                    "n_pred": 8371,
+                    "n_ref": 8186
+                }
+            },
+            "prediction_file": "/nfs/home/mwei/nnUNet_results/nnUNet_results_sum_headver7_bs8_with_pretrain/segreTr_fast/case_0287.nii.gz",
+            "reference_file": "/nfs/home/mwei/nnUNet_3d_data/nnUNet_raw/Dataset001_3DCT/labelsVal/case_0287.nii.gz"
+        }
+    ]
+}

@@ -259,8 +259,6 @@ python nnunetv2/evaluation/evaluate_classification.py \
   $nnUNet_raw/Dataset001_3DCT/classification.json \
   --class-names "subtype0" "subtype1" "subtype2"
 ```
-```
-
 
 ## Notes
 

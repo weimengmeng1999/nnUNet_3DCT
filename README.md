@@ -175,9 +175,41 @@ python nnunetv2/evaluation/evaluate_classification.py \
 
 The classification performance report can be found in **[classification metrics report](stage2_output/classification_metrics.json)**.
 
+Lesion classification performance across subtypes on validation set is:
+
+| **Class**      | **F1** | **Precision** | **Recall** |
+|----------------|--------|---------------|------------|
+| Subtype0       | 0.53   | 0.67          | 0.44       |
+| Subtype1       | 0.60   | 0.60          | 0.60       |
+| Subtype2       | 0.52   | 0.47          | 0.58       |
+| **Macro Avg**  | 0.55   | 0.58          | 0.54       |
+| **Weighted Avg** | 0.56 | 0.57          | 0.56       |
+
+
 The segmentation performance for multi-class can be found in **[pancreas/lesion segmentation report](stage2_output/summary.json)**.
 
 The segmentation performance for whole pancreas can be found in **[whole pancreas segmentation report](stage2_output/whole_pancreas_summary.json)**.
+
+The segmentation performance on validation set is:
+
+| **Class**                        | **DSC (%)** |
+|----------------------------------|-------------|
+| Normal Pancreas (label = 1)      | 0.32        |
+| Pancreas Lesion (label = 2)      | 0.85        |
+| **Mean**                         | 0.58        |
+| Whole Pancreas (label > 0)       | 0.97        |
+
+
+The segmentation visualization is as below.
+![Model Architecture](figures/cvis.svg)
+
+The inference time improvements are:
+
+| **Inference Time** | **Before (s)** | **After (s)** |
+|--------------------|----------------|---------------|
+| Normalize          | 0.006          | 0.001         |
+| Resampling         | 0.71           | 0.004         |
+| Total prediction   | 117.58         | 81.47         |
 
 ## Quickstart (End-to-End Example)
 

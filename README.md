@@ -3,7 +3,9 @@
 
 This repository contains scripts and configurations for training and evaluating a **multi-task deep learning model** for **pancreas cancer segmentation and classification** from 3D CT scans.  
 The approach extends **[nnU-Net v2](https://github.com/MIC-DKFZ/nnUNet)** with a **classification head** for lesion subtype prediction.  
-We explore methods to improve classification accuracy and inference efficiency.
+We explore methods to improve classification accuracy and inference efficiency
+
+![Model Architecture](figures/model_3dct.png)
 
 
 ## Setup
@@ -189,6 +191,7 @@ python nnunetv2/evaluation/evaluate_classification.py \
 
 ## Notes
 
+- Batch size is important for training the classification head. We highly recommend to train for >8 bs.
 - Adjust `NNUNETV2_MT_NUM_CLS` and `NNUNETV2_MT_LOSS_WEIGHT` depending on the number of classes and classification weight in your task.
 - For fine-tuning classification with segmentation training, a pre-trained segmentation model checkpoint must be provided via `NNUNETV2_PRE_CHECKPOINT_PATH`.
 

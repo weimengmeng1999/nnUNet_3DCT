@@ -10,9 +10,19 @@ We explore methods to improve classification accuracy and inference efficiency
 
 ## Setup
 
+Follow the **[Dockerfile](nnunet_3dct/Dockerfile)** or using the following for the installation. 
+
+```bash
+cd nnunet_3dct
+pip install -e .
+```
+
 Before running training or inference, set the following environment variables:
 
 ```bash
+cd nnunet_3dct
+pip install -e .
+
 export nnUNet_raw="/path/to/nnUNet_raw"
 export nnUNet_preprocessed="/path/to/nnUNet_preprocessed"
 export nnUNet_results="/path/to/nnUNet_results"
@@ -29,7 +39,7 @@ Note: if you use T4 GPU on colab, this will give you batch size 3 for your plans
 ## Pre-trained Weights
 
 Download the pre-trained weights here for stage 1 (segmentation only):
-[pretrained_model_stage1.pth](https://drive.google.com/file/d/1kjE-K2zZ7JNzePiKcN4XPfm_ZctvmYY3/view?usp=sharing)
+[pretrained_model_stage1.pth](https://drive.google.com/file/d/14dNt-dVwrSkov8c3B4TobnK9CUhWGRYv/view?usp=sharing)
 
 Download the pre-trained weights here for stage 2 (multi-task: segmentation and classification):
 [pretrained_model_stage2.pth](https://drive.google.com/file/d/13tbgtirXdxdkgwsDelrkoXT6E5GQTKTa/view?usp=sharing)
@@ -47,18 +57,6 @@ nnUNetv2_train Dataset001_3DCT 3d_fullres 0 --npz
 
 ### Stage 2: Train Jointly with Classification
 
-#### Train from Scratch
-
-Train the segmentation head with classification head together from scratch.
-
-```bash
-export NNUNETV2_MT_NUM_CLS=3
-export NNUNETV2_MT_LOSS_WEIGHT=0.3
-
-nnUNetv2_train Dataset001_3DCT 3d_fullres 0 \
-  -tr nnUNetTrainer_CLSHeadSum -p nnUNetPlans --npz
-```
-
 #### Fine-tune from stage 1 Pre-trained
 
 Fin-tune the classification head and original nnUNet network (encoder + segmentation head) from the pre-trained weights that trained only for segmentation.
@@ -69,6 +67,18 @@ export NNUNETV2_MT_LOSS_WEIGHT=0.3 #lambda for cls loss
 #IMPORTANT: load the pre-trained weights from stage 1 
 export NNUNETV2_PRE_CHECKPOINT_PATH="/path/to/checkpoint_best_stage1.pth" 
 nnUNetv2_train Dataset001_3DCT 3d_fullres 0 -tr nnUNetTrainer_CLSHeadSumFT -p nnUNetPlans --npz
+```
+
+#### Train from Scratch
+
+Train the segmentation head with classification head together from scratch.
+
+```bash
+export NNUNETV2_MT_NUM_CLS=3
+export NNUNETV2_MT_LOSS_WEIGHT=0.3
+
+nnUNetv2_train Dataset001_3DCT 3d_fullres 0 \
+  -tr nnUNetTrainer_CLSHeadSum -p nnUNetPlans --npz
 ```
 
 ### Train Varient Classification Head
@@ -96,7 +106,7 @@ nnUNetv2_train Dataset001_3DCT 3d_fullres 0 \
 
 Follow the instructions or use **[inf.sh](inf.sh)** to conduct training.
 
-### Segmentation only
+### Stage 1: Segmentation only
 Inference original nnUNet version.
 
 ```bash
@@ -105,14 +115,14 @@ nnUNetv2_predict \
   -o /path/to/output_segmentation \
   -d Dataset001_3DCT \
   -c 3d_fullres \
-  -tr nnUNetTrainer_CLSHead \
+  -tr nnUNetTrainer_CLSHeadSumFT \ #only the name for checkpoint folder
   -p nnUNetPlans \
   -f 0 \
   -chk checkpoint_best.pth \
   --save_probabilities
 ```
 
-### Segmentation + Classification
+### Stage 2: Segmentation + Classification
 Inference with improved speed.
 
 ```bash
@@ -122,7 +132,7 @@ python nnunetv2/inference/predict_classification_fast_CLSHeadSum.py \
   -co /path/to/output \
   -d Dataset001_3DCT \
   -c 3d_fullres \
-  -tr nnUNetTrainer_CLSHeadSum \
+  -tr nnUNetTrainer_CLSHeadSumFT \
   -p nnUNetPlans \
   -f 0 \
   -chk checkpoint_latest.pth \
@@ -175,7 +185,7 @@ The segmentation performance for whole pancreas can be found in **[whole pancrea
 # 1. Set paths
 export nnUNet_raw="/path/to/nnUNet_raw"
 export nnUNet_preprocessed="/path/to/nnUNet_preprocessed"
-export nnUNet_results="/path/to/nnUNet_results_sum_bs8"
+export nnUNet_results="/path/to/nnUNet_results_sum_bs8
 
 # 2. Train model for stage 1 (segmentation only)
 

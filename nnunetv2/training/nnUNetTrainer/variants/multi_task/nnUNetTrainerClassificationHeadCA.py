@@ -12,131 +12,168 @@ from nnunetv2.training.loss.dice import get_tp_fp_fn_tn
 from nnunetv2.utilities.helpers import dummy_context
 from nnunetv2.training.lr_scheduler.polylr import PolyLRScheduler
 import torch.nn.functional as F
+from sklearn.metrics import accuracy_score, f1_score
+from batchgenerators.utilities.file_and_folder_operations import join, maybe_mkdir_p
+from nnunetv2.utilities.collate_outputs import collate_outputs
 
 from torch.nn import init
+from time import time
 
-class CA_Module_3D(nn.Module):
-    """3D Channel Attention (Modified from your 2D version)"""
-    def __init__(self, in_channel):
-        super().__init__()
-        self.avgpool = nn.AdaptiveAvgPool3d(1)  # Changed to 3D
-        self.maxpool = nn.AdaptiveMaxPool3d(1)   # Changed to 3D
-        
-        self.linear = nn.Sequential(
-            nn.Linear(2 * in_channel, max(4, in_channel // 16)),  # Avoid too small dims
-            nn.ReLU(),
-            nn.Linear(max(4, in_channel // 16), in_channel),
-            nn.Sigmoid()
-        )
-
-    def forward(self, x):
-        b, c, _, _, _ = x.size()  # 3D shape
-        p1 = self.avgpool(x).flatten(1)
-        p2 = self.maxpool(x).flatten(1)
-        p = torch.cat([p1, p2], dim=1)
-        po = self.linear(p).view(b, c, 1, 1, 1)  # 3D reshape
-        return x * po  # Remove ReLU to prevent dead neurons
-
-
+#ver12
 class Classifier3D(nn.Module):
-    """3D Classifier for nnUNet Features"""
-    def __init__(self, num_classes, encoder_channels=[256, 320, 320]):
+    """
+    3D Classifier for multi-scale nnUNet features
+    Mask-guided ROI pooling + grid pooling + per-scale self-attention + MLP
+    """
+    def __init__(
+        self,
+        num_classes,
+        encoder_channels=[320, 256, 128, 64, 32],
+        hidden_dim=128,
+        grid_size=(4, 4, 4),
+        attn_heads=4,
+        attn_dim=128
+    ):
         super().__init__()
-        # Channel attention for multi-scale features
-        self.ca1 = CA_Module_3D(encoder_channels[0])
-        self.ca2 = CA_Module_3D(encoder_channels[1])
-        self.ca3 = CA_Module_3D(encoder_channels[2])
-        
-        # 3D Upsampling
-        self.up = nn.Upsample(scale_factor=2, mode='trilinear', align_corners=False)
-        
-        # Classifier head
-        self.avgpool = nn.AdaptiveAvgPool3d(1)
-        total_channels = sum(encoder_channels)
-        self.fc = nn.Sequential(
-            nn.Linear(total_channels, 128),  # Reduced capacity for 3D
-            nn.ReLU(),
-            nn.Linear(128, num_classes)
-        )
+        self.grid_size = grid_size
+        self.num_classes = num_classes
 
-    def forward(self, x1, x2, x3):
-        # Process multi-scale features
-        c1 = self.ca1(x1)  # [B, 256, D1, H1, W1]
-        c2 = self.up(self.ca2(x2))  # [B, 320, D1, H1, W1]
-        c3 = self.ca3(x3)  # [B, 320, D3, H3, W3]
-        
-        # Ensure spatial dims match via adaptive pooling
-        target_size = c1.shape[2:]
-        c2 = F.interpolate(c2, size=target_size, mode='trilinear')
-        c3 = F.interpolate(c3, size=target_size, mode='trilinear')
-        
-        # Concatenate and classify
-        x = torch.cat([c1, c2, c3], dim=1)
-        x = self.avgpool(x).flatten(1)
-        return self.fc(x)
+        self.proj_layers = nn.ModuleList()
+        self.attn_layers = nn.ModuleList()
+        self.mlp_layers = nn.ModuleList()
 
-class nnUNetTrainer_CLSHeadCA(nnUNetTrainer):
+        for ch in encoder_channels:
+            # Input dimension after flattening pooled grid
+            pooled_dim = ch * grid_size[0] * grid_size[1] * grid_size[2]
+
+            # Linear projection to attention embedding
+            self.proj_layers.append(nn.Linear(ch, attn_dim))
+
+            # Multi-head attention
+            self.attn_layers.append(nn.MultiheadAttention(embed_dim=attn_dim, num_heads=attn_heads, batch_first=True))
+
+            # Per-scale MLP
+            self.mlp_layers.append(
+                nn.Sequential(
+                    nn.Linear(attn_dim, hidden_dim),
+                    nn.ReLU(),
+                    nn.Linear(hidden_dim, num_classes)
+                )
+            )
+
+        # Final FC to combine per-scale logits
+        self.final_fc = nn.Linear(num_classes * len(encoder_channels), num_classes)
+
+    def forward(self, *features):
+        """
+        features: list of encoder features at multiple scales (B x C x D x H x W)
+        masks: optional segmentation masks (B x 1 x D x H x W)
+        """
+        logits_list = []
+
+        for i, (feat, proj, attn, mlp) in enumerate(zip(features, self.proj_layers, self.attn_layers, self.mlp_layers)):
+            B, C, D, H, W = feat.shape
+
+            # Adaptive grid pooling
+            pooled = F.adaptive_max_pool3d(feat, output_size=self.grid_size)  # B x C x d x h x w
+            B, C, d, h, w = pooled.shape
+
+            # Flatten spatial positions: B x L x C
+            pooled_flat = pooled.view(B, C, -1).transpose(1, 2)  # B x L x C
+
+            # Linear projection per position
+            pooled_attn = proj(pooled_flat)  # B x L x attn_dim
+
+            # Self-attention over spatial positions
+            attn_out, _ = attn(pooled_attn, pooled_attn, pooled_attn)  # B x L x attn_dim
+            attn_out = attn_out.mean(dim=1)  # B x attn_dim
+
+            # Per-scale MLP
+            logits_list.append(mlp(attn_out))  # B x num_classes
+
+        # Concatenate per-scale logits and final FC
+        concat_logits = torch.cat(logits_list, dim=1)
+        return self.final_fc(concat_logits)
+
+
+class FocalLoss(nn.Module):
+    def __init__(self, alpha=1.0, gamma=2.0, reduction='mean'):
+        super().__init__()
+        self.alpha = alpha
+        self.gamma = gamma
+        self.reduction = reduction
+    
+    def forward(self, inputs, targets):
+        ce_loss = F.cross_entropy(inputs, targets, reduction='none')
+        pt = torch.exp(-ce_loss)  # probability of correct class
+        focal_loss = self.alpha * (1 - pt) ** self.gamma * ce_loss
+        
+        if self.reduction == 'mean':
+            return focal_loss.mean()
+        elif self.reduction == 'sum':
+            return focal_loss.sum()
+        else:
+            return focal_loss 
+
+class nnUNetTrainer_CLSHeadSumFT(nnUNetTrainer):
     def __init__(self, plans: dict, configuration: str, fold: int, dataset_json: dict,
                  device: torch.device = torch.device('cuda')):
         super().__init__(plans, configuration, fold, dataset_json, device)
-        self.mt_num_classes = int(os.environ.get('NNUNETV2_MT_NUM_CLS', '2'))
+        self.mt_num_classes = int(os.environ.get('NNUNETV2_MT_NUM_CLS', '3'))
         self.mt_loss_weight = float(os.environ.get('NNUNETV2_MT_LOSS_WEIGHT', '0.3'))
-        self.mt_multilabel = os.environ.get('NNUNETV2_MT_MULTILABEL', '0').lower() in ('1', 'true', 't', 'yes')
+        #define the path for pre-trained weight from stage 1
+        self.pre_checkpoint_path = os.environ.get('NNUNETV2_PRE_CHECKPOINT_PATH', 
+        '/nfs/home/mwei/nnUNet_data/nnUNet_results/Dataset001_3DCT/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/checkpoint_best.pth')
         
         # Calculate proper class weights based on your training data
         self.cls_head = None
         self.cls_loss_fn = None
         # self.gradient_accumulation_steps = 4  # Effective batch_size=8
 
-    def _build_cls_head_if_needed(self):
-        if self.cls_head is not None:
-            return
-            
-        # encoder_channels = 320  # From plans.json
-        
-        # # Improved classification head
-        # # self.cls_head = nn.Sequential(
-        # #     nn.AdaptiveAvgPool3d(1),
-        # #     nn.Flatten(),
-        # #     nn.InstanceNorm1d(encoder_channels),  # Stable normalization for small batches
-        # #     nn.Linear(encoder_channels, self.mt_num_classes)  # Direct prediction
-        # # ).to(self.device)
-        # self.cls_head = nn.Sequential(
-        #     nn.AdaptiveAvgPool3d(1),  
-        #     nn.Flatten(),
-        #     nn.LayerNorm(encoder_channels),
-        #     nn.Linear(encoder_channels, self.mt_num_classes)
-        # ).to(self.device) # simple LNorm experiment/ 1opt1lr experiment / simple ver2
-        self.cls_head = Classifier3D(self.mt_num_classes).to(self.device)
+    def build_cls_head(self):
+        cls_head = Classifier3D(self.mt_num_classes).to(self.device)
 
-        # Proper initialization
-        # for m in self.cls_head.modules():
-        #     if isinstance(m, nn.Linear):
-        #         nn.init.kaiming_normal_(m.weight, mode='fan_out')
-        #         nn.init.constant_(m.bias, 0)
+        return cls_head
+    
+    def configure_optimizers_cls(self):
+        #train from stage 1 checkpoint
+        optimizer = torch.optim.SGD([
+            {'params': self.network.parameters(), 'lr': self.initial_lr},
+            {'params': self.cls_head.parameters(), 'lr': self.initial_lr * 10}  # Higher LR for head
+        ], weight_decay=self.weight_decay, momentum=0.99, nesterov=True)
 
-        weights_fn = torch.tensor([1.7, 1.0, 1.26], dtype=torch.float32).to(self.device)  # Example weights
-        
-        # Improved loss function with label smoothing
-        self.cls_loss_fn = nn.CrossEntropyLoss(
-            weight=weights_fn,
-            label_smoothing=0.1  # Helps with small batches
-        )
-
-    def configure_optimizers(self):
-        self._build_cls_head_if_needed()
-        # optimizer = torch.optim.SGD([
-        #     {'params': self.network.parameters(), 'lr': self.initial_lr},
-        #     {'params': self.cls_head.parameters(), 'lr': self.initial_lr * 5}  # Higher LR for head
-        # ], lr=self.initial_lr, weight_decay=self.weight_decay, momentum=0.99, nesterov=True)
-
-        optimizer = torch.optim.SGD(
-            list(self.network.parameters()) + list(self.cls_head.parameters()),
-            self.initial_lr, weight_decay=self.weight_decay, momentum=0.99, nesterov=True
-        )
-        
         lr_scheduler = PolyLRScheduler(optimizer, self.initial_lr, self.num_epochs)
         return optimizer, lr_scheduler
+    
+    def initialize(self):
+        super().initialize()
+        self.cls_head = self.build_cls_head()
+        # weights_fn = torch.tensor([1.3548, 0.7925, 1.0], dtype=torch.float32).to(self.device)
+        # self.cls_loss_fn = nn.CrossEntropyLoss(weight=weights_fn)
+        # self.cls_loss_fn = FocalLoss(alpha=1.0, gamma=2.0)
+        self.cls_loss_fn = nn.CrossEntropyLoss()
+
+        self.initial_lr = 1e-3
+        self.num_epochs = 200
+        self.mt_loss_weight = 0.3 #0.5 for ver12 experiment
+
+        self.optimizer, self.lr_scheduler = self.configure_optimizers_cls()
+        #add for using checkpoint for stage 1 trained only for segmentation
+        checkpoint = torch.load(self.pre_checkpoint_path, map_location=self.device, weights_only=False)
+
+        new_state_dict = {}
+        for k, value in checkpoint['network_weights'].items():
+            key = k
+            if key not in self.network.state_dict().keys() and key.startswith('module.'):
+                key = key[7:]
+            new_state_dict[key] = value
+            
+        # # Load the weights
+        self.network._orig_mod.load_state_dict(new_state_dict)
+
+        # Mark as loaded to avoid reloading every step
+        self._pretrained_loaded = True
+        print("Pretrained weights loaded successfully!")
     
     def _compute_segmentation_loss_only(self, output, target):
         return self.loss(output, target)
@@ -165,21 +202,39 @@ class nnUNetTrainer_CLSHeadCA(nnUNetTrainer):
         # Forward pass
         with autocast(self.device.type, enabled=True):
             # Single forward pass through encoder
-            encoder_features = self.network.encoder(data)
-            seg_outputs = self.network.decoder(encoder_features)
-            bottleneck_feature_0 = encoder_features[-3]
-            bottleneck_feature_1 = encoder_features[-2]
-            bottleneck_feature_2 = encoder_features[-1]
-            
+            encoder_features = self.network.encoder(data)  # list of encoder stage outputs
+
+            # Get bottleneck encoder feature
+            decoder_features, seg_outputs = [], []
+            bottleneck_feature = encoder_features[-1]
+            y = bottleneck_feature
+            for i, stage in enumerate(self.network.decoder.stages):
+
+                y = self.network.decoder.transpconvs[i](y)
+                y = torch.cat((y, encoder_features[-(i+2)]), 1) #NOTE??
+                y = stage(y)
+                decoder_features.append(y)
+
+                if self.enable_deep_supervision:
+                    seg_outputs.append(self.network.decoder.seg_layers[i](y))
+                elif i == (len(self.network.decoder.stages) - 1):
+                    seg_outputs.append(self.network.decoder.seg_layers[-1](y))
+
+
+            # invert seg outputs so that the largest segmentation prediction is returned first
+            seg_outputs = seg_outputs[::-1]
+            if not self.enable_deep_supervision:
+                seg_outputs = seg_outputs[0]
+
             seg_loss = self._compute_segmentation_loss_only(seg_outputs, target)
             
             cls_loss = torch.tensor(0.0, device=self.device)
-            if cls_target is not None:
-                cls_logits = self.cls_head(bottleneck_feature_0, bottleneck_feature_1, bottleneck_feature_2)
-                cls_loss = self.cls_loss_fn(cls_logits, cls_target)
-                
+            cls_logits = self.cls_head(bottleneck_feature, *decoder_features)
+            #with mask guided pooling
+            # cls_logits = self.cls_head(*decoder_features, masks=target)
+            cls_loss = self.cls_loss_fn(cls_logits, cls_target)
 
-            total_loss = 0.7 * seg_loss + 0.3 * cls_loss
+            total_loss = seg_loss + self.mt_loss_weight * cls_loss
             # total_loss = 0.7 * seg_loss + self.mt_loss_weight * cls_loss
 
         if self.grad_scaler is not None:
@@ -219,25 +274,46 @@ class nnUNetTrainer_CLSHeadCA(nnUNetTrainer):
                 cls_target = torch.as_tensor(cls_target, device=self.device)
 
         with autocast(self.device.type, enabled=True) if self.device.type == 'cuda' else dummy_context():
-            # Forward pass - now returns seg_outputs AND encoder_features
-            encoder_features = self.network.encoder(data)
-            seg_outputs = self.network.decoder(encoder_features)
-            bottleneck_feature_0 = encoder_features[-3]
-            bottleneck_feature_1 = encoder_features[-2]
-            bottleneck_feature_2 = encoder_features[-1]
-            
+            # Single forward pass through encoder
+            encoder_features = self.network.encoder(data)  # list of encoder stage outputs
+
+            # Get bottleneck encoder feature
+            decoder_features, seg_outputs = [], []
+            bottleneck_feature = encoder_features[-1]
+            y = bottleneck_feature
+            for i, stage in enumerate(self.network.decoder.stages):
+
+                y = self.network.decoder.transpconvs[i](y)
+                y = torch.cat((y, encoder_features[-(i+2)]), 1) #NOTE??
+                y = stage(y)
+                decoder_features.append(y)
+
+                if self.enable_deep_supervision:
+                    seg_outputs.append(self.network.decoder.seg_layers[i](y))
+                elif i == (len(self.network.decoder.stages) - 1):
+                    seg_outputs.append(self.network.decoder.seg_layers[-1](y))
+
+
+            # invert seg outputs so that the largest segmentation prediction is returned first
+            seg_outputs = seg_outputs[::-1]
+            if not self.enable_deep_supervision:
+                seg_outputs = seg_outputs[0]
+
 
             seg_loss = self._compute_segmentation_loss_only(seg_outputs, target)
 
             cls_loss = torch.tensor(0.0, device=self.device)
-            if cls_target is not None and encoder_features is not None:
-                cls_logits = self.cls_head(bottleneck_feature_0, bottleneck_feature_1, bottleneck_feature_2)
-
-                cls_target = cls_target.long()
-                cls_loss = self.cls_loss_fn(cls_logits, cls_target)
+            cls_logits = self.cls_head(bottleneck_feature, *decoder_features)
+            # with mask guided pooling
+            # cls_logits = self.cls_head(*decoder_features, masks=target)
+            cls_loss = self.cls_loss_fn(cls_logits, cls_target)
 
             # total_loss = seg_loss + self.mt_loss_weight * cls_loss
-            total_loss = 0.7 * seg_loss + 0.3 * cls_loss
+            total_loss = seg_loss + self.mt_loss_weight * cls_loss
+            # total_loss = seg_loss + cls_loss
+
+            pred_class = cls_logits.argmax(dim=1).detach().cpu().numpy()
+            true_class = cls_target.detach().cpu().numpy()
 
         # Compute segmentation metrics (pseudo dice) as in base class
         if self.enable_deep_supervision:
@@ -279,40 +355,98 @@ class nnUNetTrainer_CLSHeadCA(nnUNetTrainer):
             fn_hard = fn_hard[1:]
 
         out = {'loss': total_loss.detach().cpu().numpy(), 'tp_hard': tp_hard, 'fp_hard': fp_hard, 'fn_hard': fn_hard}
-        out['seg_loss'] = seg_loss.detach().cpu().numpy()
-        out['cls_loss'] = cls_loss.detach().cpu().numpy()
-        
-        # Calculate F1 score for classification if we have classification targets
-        if cls_target is not None and encoder_features is not None:
-            cls_pred = cls_logits.argmax(dim=1)
-            cls_pred_np = cls_pred.detach().cpu().numpy()
-            cls_target_np = cls_target.detach().cpu().numpy()
-            
-            # Calculate metrics
-            out['f1_macro'] = f1_score(cls_target_np, cls_pred_np, average='macro', zero_division=0)
-            # cm = confusion_matrix(cls_target_np, cls_pred_np)
-            
-            # # Log per-class accuracy
-            # for i in range(self.mt_num_classes):
-            #     out[f'cls_acc_{i}'] = (cm[i,i] / cm[i].sum()) if cm[i].sum() > 0 else 0
+        out['true_class'] = true_class
+        out['pred_class'] = pred_class
+
         return out
 
+    def on_validation_epoch_end(self, val_outputs: List[dict]):
+        outputs_collated = collate_outputs(val_outputs)
+
+        tp = np.sum(outputs_collated['tp_hard'], 0)
+        fp = np.sum(outputs_collated['fp_hard'], 0)
+        fn = np.sum(outputs_collated['fn_hard'], 0)
+
+        if self.is_ddp:
+            world_size = dist.get_world_size()
+
+            tps = [None for _ in range(world_size)]
+            dist.all_gather_object(tps, tp)
+            tp = np.vstack([i[None] for i in tps]).sum(0)
+
+            fps = [None for _ in range(world_size)]
+            dist.all_gather_object(fps, fp)
+            fp = np.vstack([i[None] for i in fps]).sum(0)
+
+            fns = [None for _ in range(world_size)]
+            dist.all_gather_object(fns, fn)
+            fn = np.vstack([i[None] for i in fns]).sum(0)
+
+            losses_val = [None for _ in range(world_size)]
+            dist.all_gather_object(losses_val, outputs_collated['loss'])
+            loss_here = np.vstack(losses_val).mean()
+        else:
+            loss_here = np.mean(outputs_collated['loss'])
+
+        global_dc_per_class = [i for i in [2 * i / (2 * i + j + k) for i, j, k in zip(tp, fp, fn)]]
+        mean_fg_dice = np.nanmean(global_dc_per_class)
+        self.logger.log('mean_fg_dice', mean_fg_dice, self.current_epoch)
+        self.logger.log('dice_per_class_or_region', global_dc_per_class, self.current_epoch)
+        self.logger.log('val_losses', loss_here, self.current_epoch)
+
+        all_true = np.asarray(outputs_collated['true_class']).reshape(-1)  # ensure shape (N,)
+        all_pred = np.asarray(outputs_collated['pred_class']).reshape(-1)  # ensure shape (N,)
+
+        acc = accuracy_score(all_true, all_pred)
+        f1 = f1_score(all_true, all_pred, average='macro')
+
+        self.logger.log('val_classification_acc', acc, self.current_epoch)
+        self.logger.log('val_classification_f1', f1, self.current_epoch)
+
+
+        loss_here = np.mean(outputs_collated['loss'])
+        self.logger.log('val_losses', loss_here, self.current_epoch)
+
     def on_epoch_end(self):
-        super().on_epoch_end()
+        self.logger.log('epoch_end_timestamps', time(), self.current_epoch)
+
+        self.print_to_log_file('train_loss', np.round(self.logger.my_fantastic_logging['train_losses'][-1], decimals=4))
+        self.print_to_log_file('val_loss', np.round(self.logger.my_fantastic_logging['val_losses'][-1], decimals=4))
+        self.print_to_log_file('Pseudo dice', [np.round(i, decimals=4) for i in
+                                               self.logger.my_fantastic_logging['dice_per_class_or_region'][-1]])
+        self.print_to_log_file('val_classification_acc', np.round(self.logger.my_fantastic_logging['val_classification_acc'][-1], decimals=4))
+        self.print_to_log_file('val_classification_f1', np.round(self.logger.my_fantastic_logging['val_classification_f1'][-1], decimals=4))
+        self.print_to_log_file(
+            f"Epoch time: {np.round(self.logger.my_fantastic_logging['epoch_end_timestamps'][-1] - self.logger.my_fantastic_logging['epoch_start_timestamps'][-1], decimals=2)} s")
+
+        # handling periodic checkpointing
+        current_epoch = self.current_epoch
+        if (current_epoch + 1) % self.save_every == 0 and current_epoch != (self.num_epochs - 1):
+            self.save_checkpoint(join(self.output_folder, 'checkpoint_latest.pth'))
         
-        # Only log if we're the main process (DDP) and have classification data
-        if self.local_rank == 0 and hasattr(self.logger, 'my_fantastic_logging'):
-            # Log classification metrics if they exist
-            if 'f1_macro' in self.logger.my_fantastic_logging:
-                last_f1 = self.logger.my_fantastic_logging['f1_macro'][-1]
-                self.print_to_log_file(f"Validation F1 Macro: {np.round(last_f1, decimals=4)}")
-                
-                # Log per-class accuracy if available
-                for i in range(self.mt_num_classes):
-                    acc_key = f'cls_acc_{i}'
-                    if acc_key in self.logger.my_fantastic_logging:
-                        last_acc = self.logger.my_fantastic_logging[acc_key][-1]
-                        self.print_to_log_file(f"Class {i} Accuracy: {np.round(last_acc * 100, decimals=2)}%")
+        # handle 'best' checkpointing. ema_fg_dice is computed by the logger and can be accessed like this
+        if self._best_ema is None or self.logger.my_fantastic_logging['ema_fg_dice'][-1] > self._best_ema:
+            self._best_ema = self.logger.my_fantastic_logging['ema_fg_dice'][-1]
+            self.print_to_log_file(f"Yayy! New best EMA pseudo Dice: {np.round(self._best_ema, decimals=4)}")
+            self.save_checkpoint(join(self.output_folder, 'checkpoint_best.pth'))
+
+        if not hasattr(self, "_best_cls_f1"):
+            self._best_cls_f1 = None
+
+        # handle best checkpointing for classification
+        current_f1 = self.logger.my_fantastic_logging['val_classification_f1'][-1]
+        # if (current_epoch + 1) % self.save_every == 0 and current_epoch != (self.num_epochs - 1):
+        if self._best_cls_f1 is None or current_f1 > self._best_cls_f1:
+            self._best_cls_f1 = current_f1
+            filename = f'checkpoint_cls_best.pth'
+            self.save_checkpoint(join(self.output_folder, filename))
+            self.print_to_log_file(f"new best macro F1: {np.round(current_f1, 4)}")
+
+        if self.local_rank == 0:
+            print("plotting progress png")
+            self.logger.plot_progress_png_wcls(self.output_folder)
+
+        self.current_epoch += 1
 
     def save_checkpoint(self, filename: str) -> None:
         if self.local_rank == 0:
@@ -333,7 +467,6 @@ class nnUNetTrainer_CLSHeadCA(nnUNetTrainer):
                     'cls_head_state': self.cls_head.state_dict() if self.cls_head is not None else None,
                     'mt_num_classes': self.mt_num_classes,
                     'mt_loss_weight': self.mt_loss_weight,
-                    'mt_multilabel': self.mt_multilabel,
                 }
                 torch.save(checkpoint, filename)
             else:
@@ -366,7 +499,7 @@ class nnUNetTrainer_CLSHeadCA(nnUNetTrainer):
         self.network.original_network.load_state_dict(new_state_dict)
         
         # Build and load classification head
-        self._build_cls_head_if_needed()
+        self.build_cls_head_if_needed()
         if checkpoint.get('cls_head_state') is not None:
             self.cls_head.load_state_dict(checkpoint['cls_head_state'])
 

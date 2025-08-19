@@ -26,11 +26,28 @@ nnUNetv2_plan_and_preprocess -d 1 --verify_dataset_integrity
 
 Note: if you use T4 GPU on colab, this will give you batch size 3 for your plans.json, which could influence the training. We suggest to train the model with A100 GPU for batch size > 8.
 
+## Pre-trained Weights
+
+Download the pre-trained weights here for stage 1 (segmentation only):
+[pretrained_model_stage1.pth](https://drive.google.com/file/d/1kjE-K2zZ7JNzePiKcN4XPfm_ZctvmYY3/view?usp=sharing)
+
+Download the pre-trained weights here for stage 2 (multi-task: segmentation and classification):
+[pretrained_model_stage2.pth](https://drive.google.com/file/d/13tbgtirXdxdkgwsDelrkoXT6E5GQTKTa/view?usp=sharing)
+
 ## Training
 
 Follow the instructions or use **[train.sh](train.sh)** to conduct training.
 
-### Train from Scratch
+### Stage 1: Train Segmentation Only
+Only train segmentation branch using lesion and pancreas masks as supervision.
+
+```bash
+nnUNetv2_train Dataset001_3DCT 3d_fullres 0 --npz
+```
+
+### Stage 2: Train Jointly with Classification
+
+#### Train from Scratch
 
 Train the segmentation head with classification head together from scratch.
 
@@ -42,20 +59,21 @@ nnUNetv2_train Dataset001_3DCT 3d_fullres 0 \
   -tr nnUNetTrainer_CLSHeadSum -p nnUNetPlans --npz
 ```
 
-### Fine-tune from Pre-trained
+#### Fine-tune from stage 1 Pre-trained
 
 Fin-tune the classification head and original nnUNet network (encoder + segmentation head) from the pre-trained weights that trained only for segmentation.
 
 ```bash
 export NNUNETV2_MT_NUM_CLS=3 #your number of classes
 export NNUNETV2_MT_LOSS_WEIGHT=0.3 #lambda for cls loss 
-export NNUNETV2_PRE_CHECKPOINT_PATH="/path/to/checkpoint_best.pth"
+#IMPORTANT: load the pre-trained weights from stage 1 
+export NNUNETV2_PRE_CHECKPOINT_PATH="/path/to/checkpoint_best.pth" 
 nnUNetv2_train Dataset001_3DCT 3d_fullres 0 -tr nnUNetTrainer_CLSHeadSumFT -p nnUNetPlans --npz
 ```
 
 ### Train Varient Classification Head
 
-**Train classification head only with simple architecture (from scratch)**
+**Train classification head only with single-scale (encoder bottleneck feature) architecture (from scratch)**
 
 ```bash
 export NNUNETV2_MT_NUM_CLS=3

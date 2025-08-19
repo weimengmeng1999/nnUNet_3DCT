@@ -555,8 +555,6 @@ class nnUNetTrainer_CLSHeadSum(nnUNetTrainer):
         super().__init__(plans, configuration, fold, dataset_json, device)
         self.mt_num_classes = int(os.environ.get('NNUNETV2_MT_NUM_CLS', '3'))
         self.mt_loss_weight = float(os.environ.get('NNUNETV2_MT_LOSS_WEIGHT', '0.3'))
-        self.pre_checkpoint_path = os.environ.get('NNUNETV2_PRE_CHECKPOINT_PATH', 
-        '/nfs/home/mwei/nnUNet_data/nnUNet_results/Dataset001_3DCT/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/checkpoint_best.pth')
         
         # Calculate proper class weights based on your training data
         self.cls_head = None
@@ -570,23 +568,23 @@ class nnUNetTrainer_CLSHeadSum(nnUNetTrainer):
     
     def configure_optimizers_cls(self):
         #train from stage 1 checkpoint
-        optimizer = torch.optim.SGD([
-            {'params': self.network.parameters(), 'lr': self.initial_lr},
-            {'params': self.cls_head.parameters(), 'lr': self.initial_lr * 10}  # Higher LR for head
-        ], weight_decay=self.weight_decay, momentum=0.99, nesterov=True)
+        # optimizer = torch.optim.SGD([
+        #     {'params': self.network.parameters(), 'lr': self.initial_lr},
+        #     {'params': self.cls_head.parameters(), 'lr': self.initial_lr * 10}  # Higher LR for head
+        # ], weight_decay=self.weight_decay, momentum=0.99, nesterov=True)
         #train from stage 1 checkpoint with adamw
         # optimizer = torch.optim.AdamW([
         #     {'params': self.network.parameters(), 'lr': self.initial_lr, 'weight_decay': self.weight_decay},
         #     {'params': self.cls_head.parameters(), 'lr': self.initial_lr * 10, 'weight_decay': self.weight_decay}
         # ])
         #train from scratch
-#         optimizer = torch.optim.SGD(
-#                 list(self.network.parameters()) + list(self.cls_head.parameters()),
-#                 lr=self.initial_lr,
-#                 weight_decay=self.weight_decay,
-#                 momentum=0.99,
-#                 nesterov=True
-# )
+        optimizer = torch.optim.SGD(
+                list(self.network.parameters()) + list(self.cls_head.parameters()),
+                lr=self.initial_lr,
+                weight_decay=self.weight_decay,
+                momentum=0.99,
+                nesterov=True
+)
         lr_scheduler = PolyLRScheduler(optimizer, self.initial_lr, self.num_epochs)
         return optimizer, lr_scheduler
     
@@ -603,22 +601,6 @@ class nnUNetTrainer_CLSHeadSum(nnUNetTrainer):
         self.mt_loss_weight = 0.3 #0.5 for ver12 experiment
 
         self.optimizer, self.lr_scheduler = self.configure_optimizers_cls()
-        #add for using checkpoint for stage 1 trained only for segmentation
-        checkpoint = torch.load(self.pre_checkpoint_path, map_location=self.device, weights_only=False)
-
-        new_state_dict = {}
-        for k, value in checkpoint['network_weights'].items():
-            key = k
-            if key not in self.network.state_dict().keys() and key.startswith('module.'):
-                key = key[7:]
-            new_state_dict[key] = value
-            
-        # # Load the weights
-        self.network._orig_mod.load_state_dict(new_state_dict)
-
-        # Mark as loaded to avoid reloading every step
-        self._pretrained_loaded = True
-        print("Pretrained weights loaded successfully!")
     
     def _compute_segmentation_loss_only(self, output, target):
         return self.loss(output, target)

@@ -46,7 +46,7 @@ Download the pre-trained weights here for stage 2 (multi-task: segmentation and 
 
 ## Training
 
-Follow the instructions or use **[train.sh](train.sh)** to conduct training.
+Follow the instructions or use **[train.sh](nnunet_3dct/train.sh)** to conduct training.
 
 ### Stage 1: Train Segmentation Only
 Only train segmentation branch using lesion and pancreas masks as supervision.
@@ -104,7 +104,7 @@ nnUNetv2_train Dataset001_3DCT 3d_fullres 0 \
 ```
 ## Inference
 
-Follow the instructions or use **[inf.sh](inf.sh)** to conduct training.
+Follow the instructions or use **[inf.sh](nnunet_3dct/inf.sh)** to conduct training.
 
 ### Stage 1: Segmentation only
 Inference original nnUNet version.
@@ -141,7 +141,7 @@ python nnunetv2/inference/predict_classification_fast_CLSHeadSum.py \
 
 ## Evaluation
 
-Follow the instructions or use **[eval.sh](eval.sh)** to conduct training.
+Follow the instructions or use **[eval.sh](nnunet_3dct/eval.sh)** to conduct training.
 
 ### Segmentation evaluation
 

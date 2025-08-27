@@ -3,3 +3,4 @@ from .nnUNetTrainerClassificationHeadCA import nnUNetTrainer_CLSHeadCA
 from .nnUNetTrainerClassificationHeadSum import nnUNetTrainer_CLSHeadSum
 from .nnUNetTrainerClassificationHeadSumFT import nnUNetTrainer_CLSHeadSumFT
 from .nnUNetTrainerClassificationHeadSimple import nnUNetTrainer_CLSHeadSimple
+from .nnUNetTrainerClassificationHeadMA import nnUNetTrainer_CLSHeadMA

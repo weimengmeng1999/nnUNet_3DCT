@@ -100,7 +100,7 @@ nnUNetv2_train Dataset001_3DCT 3d_fullres 0 \
   -tr nnUNetTrainer_CLSHeadSepOpt -p nnUNetPlans --npz
 ```
 
-**Fine-tune classification head of memory query & attention together with segmentation head**
+**Fine-tune classification head (memory query & attention) with segmentation head**
 
 ```bash
 export NNUNETV2_MT_NUM_CLS=3

@@ -99,6 +99,17 @@ export NNUNETV2_MT_LOSS_WEIGHT=1
 nnUNetv2_train Dataset001_3DCT 3d_fullres 0 \
   -tr nnUNetTrainer_CLSHeadSepOpt -p nnUNetPlans --npz
 ```
+
+**Fine-tune classification head of memory query & attention together with segmentation head**
+
+```bash
+export NNUNETV2_MT_NUM_CLS=3
+export NNUNETV2_MT_LOSS_WEIGHT=1
+export NNUNETV2_PRE_CHECKPOINT_PATH="/path/to/checkpoint_best_stage1.pth" 
+
+nnUNetv2_train Dataset001_3DCT 3d_fullres 0 \
+  -tr nnUNetTrainer_CLSHeadMA -p nnUNetPlans --npz
+```
 ## Inference
 
 Follow the instructions or use **[inf.sh](nnunet_3dct/inf.sh)** to conduct training.

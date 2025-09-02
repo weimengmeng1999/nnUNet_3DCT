@@ -217,9 +217,9 @@ The segmentation performance on validation set is:
 
 | **Class**                        | **DSC (%)** |
 |----------------------------------|-------------|
-| Normal Pancreas (label = 1)      | 0.32        |
-| Pancreas Lesion (label = 2)      | 0.85        |
-| **Mean**                         | 0.58        |
+| Normal Pancreas (label = 1)      | 0.95        |
+| Pancreas Lesion (label = 2)      | 0.84        |
+| **Mean**                         | 0.90        |
 | Whole Pancreas (label > 0)       | 0.97        |
 
 

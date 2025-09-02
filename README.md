@@ -131,7 +131,7 @@ nnUNetv2_predict \
 ```
 
 ### Stage 2: Segmentation + Classification
-Inference with improved speed.
+Inference with improved speed for multi-scale fusion head.
 
 ```bash
 python nnunetv2/inference/predict_classification_fast_CLSHeadSum.py \
@@ -147,6 +147,21 @@ python nnunetv2/inference/predict_classification_fast_CLSHeadSum.py \
   --save_probabilities
 ```
 
+Inference with improved speed for memory query & attention head.
+
+```bash
+python nnunetv2/inference/predict_classification_fast_CLSHeadSum.py \
+  -i /path/to/imagesVal \
+  -o /path/to/output \
+  -co /path/to/output \
+  -d Dataset001_3DCT \
+  -c 3d_fullres \
+  -tr nnUNetTrainer_CLSHeadMA \
+  -p nnUNetPlans \
+  -f 0 \
+  -chk checkpoint_cls_best.pth \
+  --save_probabilities
+```
 ## Evaluation
 
 Follow the instructions or use **[eval.sh](nnunet_3dct/eval.sh)** to conduct training.
